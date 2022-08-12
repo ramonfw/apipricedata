@@ -15,15 +15,12 @@ from fastapi import Query
 from fastapi import HTTPException
 from fastapi import Form
 
-
 # for proccessing data
 import pandas as pd
 import numpy as np
 
-
 # for persists data
 import sqlite3
-
 
 # for users control
 import users
@@ -32,13 +29,10 @@ import users
 from pandas_datareader import data as pdr
 import yfinance as yf
 
-
 # for processing datetime fields
-
 import time
 from datetime import datetime
 from datetime import timedelta
-
 
 #--- para  parametros ENUM ---
 from enum import Enum
@@ -73,11 +67,9 @@ class GuardarSN(str, Enum):
 
 #--- fin para parametros ENUM ---
 
-
 #--- para Header  ---
 from fastapi import Header
 #--- fin para Header ---
-
 
 #--- para Query params obligatorio ---
 from pydantic import Required
