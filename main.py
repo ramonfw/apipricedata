@@ -254,7 +254,7 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
 @app.get("/market-data/yhfin/")
-async def read_market_data_yhfin(q: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalName="1h", fmt: FmtName=FmtName.json, dsave: GuardarSN="no" ):
+async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalName="1h", fmt: FmtName=FmtName.json, dsave: GuardarSN="no" ):
 
     now = datetime.now()
     if fend=="today":
@@ -272,10 +272,10 @@ async def read_market_data_yhfin(q: str="TSLA", fstart: str="-30", fend: str="to
 
     yf.pdr_override()
 
-    results = {"items": [{"d": q, "start": fstart, "end": fend, "interval": tinterval, "format": fmt, "save": dsave}]}
-    if q:
+    results = {"items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt, "save": dsave}]}
+    if symbol:
         #download dataframe
-        data = pdr.get_data_yahoo(q, start=fstart, end=fend, interval=tinterval)
+        data = pdr.get_data_yahoo(symbol, start=fstart, end=fend, interval=tinterval)
         total_lineas = len(data)
 
         idx = np.arange(1,len(data)+1,1)
@@ -292,20 +292,20 @@ async def read_market_data_yhfin(q: str="TSLA", fstart: str="-30", fend: str="to
         data_return = data.to_dict('records')
 
         if dsave.value == "si":
-            q2 = q.replace("=","_")
+            q2 = symbol.replace("=","_")
             pDbAccess = DataPersist
             pDbAccess.dataframe_to_dbtable("yFinance.db", q2, interv, data)
 
         if fmt!="json":
             data_return = data.to_dict()
 
-        results.update({"q": q,"total":total_lineas, "data":data_return})
+        results.update({"symbol": symbol,"total":total_lineas, "data":data_return})
     return results
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/db/?q=TSLA
 @app.get("/market-data/db/")
-async def read_market_data_db(q: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalName="1h", fmt: FmtName=FmtName.json ):
+async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalName="1h", fmt: FmtName=FmtName.json ):
 
     now = datetime.now()
     if fend=="today":
@@ -323,12 +323,12 @@ async def read_market_data_db(q: str="TSLA", fstart: str="-30", fend: str="today
 
     yf.pdr_override()
 
-    results = {"items": [{"d": q, "start": fstart, "end": fend, "interval": tinterval, "format": fmt}]}
-    if q:
+    results = {"items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt}]}
+    if symbol:
 
         interv=tinterval.value
         pDbAccess = DataPersist
-        q2 = q.replace("=","_")
+        q2 = symbol.replace("=","_")
     
         #load dataframe from SQLite table
         data = pDbAccess.dbtable_to_dataframe("yFinance.db", q2, fstart, fend, interv)
@@ -343,7 +343,7 @@ async def read_market_data_db(q: str="TSLA", fstart: str="-30", fend: str="today
             if fmt!="json":
                 data_return = data.to_dict()
 
-        results.update({"q": q,"total":len_data, "data":data_return})
+        results.update({"symbol": symbol,"total":len_data, "data":data_return})
     return results
 
 
@@ -353,7 +353,6 @@ async def market_data_productList_db(db: str="yFinance.db", fmt: FmtName=FmtName
 
     results = {"items": [{"db": db, "format": fmt}]}
     if db:
-
         pDbAccess = DataPersist
 
         data = pDbAccess.get_products_list(db)
@@ -374,13 +373,13 @@ async def market_data_productList_db(db: str="yFinance.db", fmt: FmtName=FmtName
 
 #---  URL:  http://127.0.0.1:8000/market-data/list-products-db/
 @app.get("/market-data/product-info-db/")
-async def market_data_product_info_db(q: str="TSLA", fmt: FmtName=FmtName.json ):
+async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtName=FmtName.json ):
 
-    results = {"items": [{"d": q, "format": fmt}]}
-    if q:
+    results = {"items": [{"d": symbol, "format": fmt}]}
+    if symbol:
 
         pDbAccess = DataPersist
-        data = pDbAccess.get_products_info("yFinance.db",q)
+        data = pDbAccess.get_products_info("yFinance.db",symbol)
 
         if len(data) > 0:
             data_return = data.to_dict('records')
@@ -392,7 +391,7 @@ async def market_data_product_info_db(q: str="TSLA", fmt: FmtName=FmtName.json )
             len_data = 0
             data_return = {"tabla": " No encontrada"}
 
-        results.update({"d": q,"rango_fechas":data_return})
+        results.update({"symbol": symbol,"rango_fechas":data_return})
     return results
 
 
