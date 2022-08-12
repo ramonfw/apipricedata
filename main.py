@@ -198,7 +198,7 @@ app = FastAPI()
 @app.middleware("http")
 async def verify_token(request: Request, call_next):
     my_header = request.headers.get('X-Token')
-    print("my_header ",my_header)
+#    print("my_header ",my_header)
 
 #    if my_header == "customEncriptedToken":
     if my_header != None:
@@ -250,7 +250,7 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
     my_header = request.headers.get('x-token')
     my_cust_header = request.headers.get('x-username')
 
-    print("request.header2: ", request.headers)
+#    print("request.header2: ", request.headers)
 
     if x_token == "customEncriptedToken":
         return {"message": "Wellcome to API for accessing Yahoo Finance Data1","token": x_token}
