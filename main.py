@@ -6,17 +6,27 @@
 from typing import Union, List
 from fastapi import FastAPI
 from fastapi import Request
+from starlette.responses import JSONResponse, Response
+
+from starlette.datastructures import MutableHeaders
+from starlette.datastructures import Headers
+
 from fastapi import Query
 from fastapi import HTTPException
+from fastapi import Form
+
 
 # for proccessing data
 import pandas as pd
 import numpy as np
 
-import time
 
 # for persists data
 import sqlite3
+
+
+# for users control
+import users
 
 # for obtain forex and stock market data
 from pandas_datareader import data as pdr
@@ -25,6 +35,7 @@ import yfinance as yf
 
 # for processing datetime fields
 
+import time
 from datetime import datetime
 from datetime import timedelta
 
@@ -187,17 +198,68 @@ app = FastAPI()
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    return response
+async def verify_token(request: Request, call_next):
+    my_header = request.headers.get('X-Token')
+    print("my_header ",my_header)
+
+#    if my_header == "customEncriptedToken":
+    if my_header != None:
+
+        pUserAccess = users.UserControl
+        resultado = pUserAccess.check_token("yFinance.db", my_header)
+
+#        print(resultado)
+#        print(resultado["data"]["username"])
+
+        if resultado["result"] == "False":
+            return JSONResponse(content={
+                "message": "Token incorrect or not set"
+            }, status_code=401)
+        else:
+#            request["username"] = resultado["data"]["username"]
+
+            new_header = MutableHeaders(request._headers)
+            new_header["x-username"] = resultado["data"]["username"]
+            request._headers = new_header
+
+            request.scope.update(headers=request.headers.raw)
+
+            response = await call_next(request)
+            response.headers["X-Process-Time"]="YYYYYYY"
+            return response
+    else:
+#        print(request.query_params)
+#        print(request.url)
+        actual_url = str(request.url)
+
+        pos = actual_url.find("/docs")
+        pos2 = actual_url.find("/openapi.json")
+        pos3 = actual_url.find("/users/signin")
+        pos4 = actual_url.find("/users/login")
+
+        if pos>0 or pos2>0 or pos3>0 or pos4>0:
+            response = await call_next(request)
+            return response
+
+        return JSONResponse(content={
+            "message": "Token incorrect or not set"
+        }, status_code=401)
+
 
 
 @app.get('/')
-async def root():
-    return {"message": "Wellcome to API for accessing Yahoo Finance Data"}
+async def root(request: Request, x_token: Union[List[str], None] = Header(default=None)):
+    my_header = request.headers.get('x-token')
+    my_cust_header = request.headers.get('x-username')
+
+    print("request.header2: ", request.headers)
+
+    if x_token == "customEncriptedToken":
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data1","token": x_token}
+    elif my_header == "customEncriptedToken":
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data2","X-Token": my_header}
+    else:
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data3","token1": my_header,"token2": x_token,"username": my_cust_header}
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
@@ -354,8 +416,31 @@ async def read_user(user_id: str):
     return {"user_id": user_id}
 
 
+@app.post("/users/signin/")
+async def login_user(username: str = Form(), password: str = Form()):
+    pUserAccess = users.UserControl
+
+    resultado = pUserAccess.user_signin("yFinance.db", username, password)
+
+    return {"resultado": resultado}
+
+
+@app.post("/users/login/")
+async def login_user(username: str = Form(), password: str = Form(), ClientKey: str = Form(), ClientSecret: str = Form()):
+    pUserAccess = users.UserControl
+    resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey, ClientSecret)
+
+    return {"username": resultado}
+
+
 #--- Get Header ---
     
 @app.get("/items_header/")
-async def read_items_header(x_token: Union[List[str], None] = Header(default=None)):
-    return {"X-Token values": x_token}
+async def read_items_header(request: Request, x_token: Union[List[str], None] = Header(default=None)):
+#    my_header = request.headers.get('X-Token')
+#    if my_header == "customEncriptedToken":
+#        return {"X-Token": my_header, "otroToken": x_token}
+    if str(x_token) == "customEncriptedToken":
+        return {"tokenRequestHeader": x_token}
+    
+    return {"token": "No token"}
