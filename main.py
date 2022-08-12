@@ -129,7 +129,6 @@ class DataPersist:
         return vDfP
 
 
-
     def dataframe_to_dbtable(pDataBase, pTableName, pTFrame, pDfP):
         vConn = sqlite3.connect(pDataBase)
 
@@ -192,7 +191,6 @@ class DataPersist:
         return vDfP
 
 #--- FIN clase para acceso a datos SqLite ----
-
 
 app = FastAPI()
 
