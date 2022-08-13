@@ -210,12 +210,12 @@ async def verify_token(request: Request, call_next):
 
             new_header = MutableHeaders(request._headers)
             new_header["x-username"] = resultado["data"]["username"]
+            new_header["x-userid"] = resultado["data"]["user_id"]
             request._headers = new_header
 
             request.scope.update(headers=request.headers.raw)
 
             response = await call_next(request)
-            response.headers["X-Process-Time"]="YYYYYYY"
             return response
     else:
 #        print(request.query_params)
@@ -236,11 +236,11 @@ async def verify_token(request: Request, call_next):
         }, status_code=401)
 
 
-
 @app.get('/')
 async def root(request: Request, x_token: Union[List[str], None] = Header(default=None)):
     my_header = request.headers.get('x-token')
-    my_cust_header = request.headers.get('x-username')
+    my_username = request.headers.get('x-username')
+    my_userid = request.headers.get('x-userid')
 
 #    print("request.header2: ", request.headers)
 
@@ -249,7 +249,7 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
     elif my_header == "customEncriptedToken":
         return {"message": "Wellcome to API for accessing Yahoo Finance Data2","X-Token": my_header}
     else:
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data3","token1": my_header,"token2": x_token,"username": my_cust_header}
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data3","token1": my_header,"token2": x_token,"username": my_username,"userid": my_userid}
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
@@ -396,13 +396,23 @@ async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtName=FmtName.j
 
 
 @app.get("/users/me")
-async def read_user_me():
-    return {"user_id": "the current user"}
+async def read_user_me(request: Request): 
+    my_header = request.headers.get('x-token')
+    my_username = request.headers.get('x-username')
+    my_userid = request.headers.get('x-userid')
+
+#    print("request.header2: ", request.headers)
+
+    return {"username": my_username,"userid": my_userid}
 
 
 @app.get("/users/{user_id}")
 async def read_user(user_id: str):
-    return {"user_id": user_id}
+
+    pUserAccess = users.UserControl
+    resultado = pUserAccess.get_user_by_id("yFinance.db", user_id)
+
+    return {"resultado": resultado}
 
 
 @app.post("/users/signin/")

@@ -23,7 +23,8 @@ class UserControl:
 
     def check_token(pDataBase, pToken):
         vConn1 = sqlite3.connect(pDataBase)    
-        username="-"
+        username = "-"
+        user_id = -1
 
         try:
             cursor = vConn1.cursor()
@@ -38,14 +39,15 @@ class UserControl:
             else:
                 resultqry="Ok"
                 resu = "True"
-                username=fila[1]
+                username = fila[1]
+                user_id = str(fila[0])
 
         except:
             resultqry="Error en "+select_sql
             pToken = "[]"
             resu = "False"
 
-        datos ={"username":username,"resultqry":resultqry, "Token":pToken}
+        datos ={"username":username,"user_id":user_id,"resultqry":resultqry, "Token":pToken}
         return {"result": resu, "data": datos}
 
 
@@ -75,6 +77,28 @@ class UserControl:
             vDfP = {}
 
         return vDfP
+
+
+    def get_user_by_id(pDataBase, user_id):
+        vConn1 = sqlite3.connect(pDataBase)    
+        cursor = vConn1.cursor()
+        datos ={}
+        resu = "False"
+
+        try:  
+            vSelect_sql = "SELECT *, ? FROM users WHERE id= ?"
+            dbCursor = cursor.execute(vSelect_sql, ("1",user_id))
+
+            fila = dbCursor.fetchone()
+            if fila == None:
+                datos = {"username":"Not found for user_id: "+str(user_id)}
+            else:
+                datos ={"username":fila[1],"user_id":fila[0]}
+                resu = "True"
+        except Exception as e:   # work on python 3.x
+            datos ={"username":"Not found due to ERROR -"+ str(e)}
+
+        return {"result": resu, "data": datos}
 
 
     def user_signin(pDataBase, pUserName, pUserPwd):
