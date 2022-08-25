@@ -183,13 +183,44 @@ class DataPersist:
         return vDfP
 #--- FIN clase para acceso a datos SqLite ----
 
+#--- clase para registro y visualización de solicitudes a la API ----
+class ApiRequestsRegisty:
+
+    def save_api_request(pDataBase, pUserId, pRequest, pIp, pDataRequest, pToken):
+        resu = "False"
+        vRequest = str(pRequest)
+        try:
+            vConn1 = sqlite3.connect(pDataBase)
+            cursor2 = vConn1.cursor()
+
+            now = datetime.now()
+            vFechaHora = now.strftime("%Y-%m-%d %H:%M:%S")
+#            vFechaHora = now.strftime("%Y-%m-%d")
+#            insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES ({pUserId}, '{pRequest}', '{pIp}', '{pDataRequest}', '{pToken}', '{vFechaHora}')"
+            insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
+            cursor2.execute(insert_sql,(pUserId,vRequest,pIp,pDataRequest,pToken,vFechaHora))
+            resu = "True"
+            datos = {"msg":"API Request guardara Ok"}
+
+            print (insert_sql)
+            vConn1.commit()
+            vConn1.close()
+        except Exception as e:   # work on python 3.x
+            vConn1.close()
+            datos ={"msg":"API request not saved due to ERROR -"+ str(e)}
+
+        return {"result": resu, "data": datos}
+
+#--- clase para acceso a datos SqLite ----
+
+
 
 app = FastAPI()
 
 
 @app.middleware("http")
 async def verify_token(request: Request, call_next):
-    my_header = request.headers.get('X-Token')
+    my_header_token = request.headers.get('X-Token')
 #    print("my_header ",my_header)
 
     pUserAccess = users.UserControl
@@ -201,17 +232,25 @@ async def verify_token(request: Request, call_next):
             "message": resultado["data"]["msg"] + ": Error de creación o acceso a SQLite database"
         }, status_code=401)
 
-#    if my_header == "customEncriptedToken":
-    if my_header != None:
+    pApiRequestRegistry = ApiRequestsRegisty
 
-        resultado = pUserAccess.check_token("yFinance.db", my_header)
+
+#    if my_header == "customEncriptedToken":
+    if my_header_token != None:
+
+        resultado = pUserAccess.check_token("yFinance.db", my_header_token)
 
 #        print(resultado)
 #        print(resultado["data"]["username"])
 
+#        vUserName = resultado["data"]["username"]
+        vUserId = resultado["data"]["user_id"]
+
+        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", "-", my_header_token)
+
         if resultado["result"] == "False":
             return JSONResponse(content={
-                "message": "Token incorrect (or not set)."
+                "message": "Token incorrect (or not set)." + respuesta["data"]["msg"]
             }, status_code=401)
         else:
 #            request["username"] = resultado["data"]["username"]
@@ -219,6 +258,7 @@ async def verify_token(request: Request, call_next):
             new_header = MutableHeaders(request._headers)
             new_header["x-username"] = resultado["data"]["username"]
             new_header["x-userid"] = resultado["data"]["user_id"]
+            new_header["x-cust-txt-response"] = respuesta["data"]["msg"]
             request._headers = new_header
 
             request.scope.update(headers=request.headers.raw)
@@ -235,6 +275,11 @@ async def verify_token(request: Request, call_next):
         pos3 = actual_url.find("/users/signin")
         pos4 = actual_url.find("/users/login")
 
+#        vUserId = request.user
+        vUserId = -1  # resultado["data"]["user_id"]
+        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", "-", "None")
+        print(respuesta)
+
         pos5 = 0
         if actual_url == str(request.base_url):
             pos5 = 1
@@ -246,6 +291,7 @@ async def verify_token(request: Request, call_next):
         return JSONResponse(content={
             "message": "Token not set (or incorrect)."
         }, status_code=401)
+
 
 
 @app.get('/')
