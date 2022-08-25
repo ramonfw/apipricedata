@@ -192,10 +192,18 @@ async def verify_token(request: Request, call_next):
     my_header = request.headers.get('X-Token')
 #    print("my_header ",my_header)
 
+    pUserAccess = users.UserControl
+
+    resultado = pUserAccess.create_user_data_struct("yFinance.db")
+
+    if (resultado["result"]=="False" and resultado["data"]["msg"] in ("DatabaseError Except","DatabaseError NoExec" )):
+        return JSONResponse(content={
+            "message": resultado["data"]["msg"] + ": Error de creación o acceso a SQLite database"
+        }, status_code=401)
+
 #    if my_header == "customEncriptedToken":
     if my_header != None:
 
-        pUserAccess = users.UserControl
         resultado = pUserAccess.check_token("yFinance.db", my_header)
 
 #        print(resultado)
@@ -203,7 +211,7 @@ async def verify_token(request: Request, call_next):
 
         if resultado["result"] == "False":
             return JSONResponse(content={
-                "message": "Token incorrect or not set"
+                "message": "Token incorrect (or not set)."
             }, status_code=401)
         else:
 #            request["username"] = resultado["data"]["username"]
@@ -227,29 +235,35 @@ async def verify_token(request: Request, call_next):
         pos3 = actual_url.find("/users/signin")
         pos4 = actual_url.find("/users/login")
 
-        if pos>0 or pos2>0 or pos3>0 or pos4>0:
+        pos5 = 0
+        if actual_url == str(request.base_url):
+            pos5 = 1
+
+        if pos>0 or pos2>0 or pos3>0 or pos4>0 or pos5>0:
             response = await call_next(request)
             return response
 
         return JSONResponse(content={
-            "message": "Token incorrect or not set"
+            "message": "Token not set (or incorrect)."
         }, status_code=401)
 
 
 @app.get('/')
 async def root(request: Request, x_token: Union[List[str], None] = Header(default=None)):
-    my_header = request.headers.get('x-token')
+    my_header_token = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
 
 #    print("request.header2: ", request.headers)
 
-    if x_token == "customEncriptedToken":
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data1","token": x_token}
-    elif my_header == "customEncriptedToken":
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data2","X-Token": my_header}
+#    if x_token == "customEncriptedToken":
+    if x_token != None:
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data1","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
+#    elif my_header_token == "customEncriptedToken":
+    elif my_header_token != None:
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data2","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
     else:
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data3","token1": my_header,"token2": x_token,"username": my_username,"userid": my_userid}
+        return {"message": "Wellcome to API for accessing Yahoo Finance Data3","my_header_token": "No my_header_token, No X-Token, No username, No userid"}
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA

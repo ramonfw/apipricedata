@@ -47,22 +47,29 @@ class UserControl:
             pToken = "[]"
             resu = "False"
 
+        vConn1.close()
+
         datos ={"username":username,"user_id":user_id,"resultqry":resultqry, "Token":pToken}
         return {"result": resu, "data": datos}
 
 
-    def get_users_list(pDataBase):
+    def user_table_created(pDataBase):
         vConn1 = sqlite3.connect(pDataBase)    
         vDfP = {}
+        usertable_found = False
 
         try:  
-            vSelect_sql = "SELECT username FROM users limit 2"
+            vSelect_sql = "SELECT name FROM sqlite_master WHERE type='table' and name='users'"
             vDfP = pd.read_sql_query(vSelect_sql, vConn1)
-            vConn1.close()
+            for i in range(len(vDfP.name)):
+                if vDfP.name[i] == 'users':
+                    usertable_found = True
         except:
-            vDfP = {}
+            usertable_found = False
 
-        return vDfP
+        vConn1.close()
+        return usertable_found
+
 
 
     def get_user(pDataBase, username):
@@ -72,11 +79,12 @@ class UserControl:
         try:  
             vSelect_sql = "SELECT * FROM users WHERE username='"+username+"'";
             vDfP = pd.read_sql_query(vSelect_sql, vConn1)
-            vConn1.close()
         except:
             vDfP = {}
 
+        vConn1.close()
         return vDfP
+
 
 
     def get_user_by_id(pDataBase, user_id):
@@ -91,13 +99,14 @@ class UserControl:
 
             fila = dbCursor.fetchone()
             if fila == None:
-                datos = {"username":"Not found for user_id: "+str(user_id)}
+                datos = {"username":"-","msg":"Username not found for user_id: "+str(user_id)}
             else:
                 datos ={"username":fila[1],"user_id":fila[0]}
                 resu = "True"
         except Exception as e:   # work on python 3.x
-            datos ={"username":"Not found due to ERROR -"+ str(e)}
+            datos ={"username":"-","msg":"Username not found due to ERROR -"+ str(e)}
 
+        vConn1.close()
         return {"result": resu, "data": datos}
 
 
@@ -105,16 +114,11 @@ class UserControl:
         vConn = sqlite3.connect(pDataBase)
         cursor = vConn.cursor()
 
-        list_users = UserControl.get_users_list(pDataBase)
-        user_found = False
-
-        if len(list_users)>0:
-            user_found = True
-
-        create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255))"
-        cursor.execute(create_sql)
+        user_found =  UserControl.user_table_created(pDataBase)
 
         if user_found == False:
+            create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
+            cursor.execute(create_sql)
             index_sql = "CREATE INDEX idxUsers ON users (id)"
             cursor.execute(index_sql)
 
@@ -137,31 +141,81 @@ class UserControl:
 
             select_sql = "SELECT username, ClientKey, ClientSecret FROM users WHERE username='"+pUserName+"'"
             dbCursor = cursor.execute(select_sql)
-            fila = dbCursor.fetchone()
+            datos = dbCursor.fetchone()
         else:
             resu = "False"
-
+            datos ={"msg":"Nombre de usuario ya registrado"}
         vConn.commit()
         vConn.close()
 
-        return {"result": resu, "data": fila}
+        return {"result": resu, "data": datos}
+
+
+    def create_user_data_struct(pDataBase):
+        datos = {"msg":"DatabaseError NoExec"}
+
+        try:
+            vConn = sqlite3.connect(pDataBase)
+            cursor = vConn.cursor()
+
+            resu = "False"
+
+            user_found = UserControl.user_table_created(pDataBase)
+
+            if user_found == False:  # crear metodo para crear tablas
+                create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
+                cursor.execute(create_sql)
+                index_sql = "CREATE INDEX idxUsers ON users (id)"
+                cursor.execute(index_sql)
+
+                # Crear tabla para registrar los logins: id, user_id, username, Token, FechaHora
+                create_sql = "CREATE TABLE IF NOT EXISTS users_logins (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, username VARCHAR (30), Token VARCHAR (255), FechaHora DATETIME)"
+                cursor.execute(create_sql)
+                index_sql = "CREATE INDEX idxUserLogins ON users_logins (id)"
+                cursor.execute(index_sql)
+
+                # Crear tabla para registrar los API request userid, request, ip, data, Token, FechaHora
+                create_sql = "CREATE TABLE IF NOT EXISTS api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, request VARCHAR (255), ip VARCHAR (127), data VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
+                cursor.execute(create_sql)
+                index_sql = "CREATE INDEX idxApiRequests ON api_requests (id)"
+                cursor.execute(index_sql)
+
+                vConn.commit()
+                datos = {"msg":"Tablas creadas"}
+                resu = "True"
+            else:
+                datos = {"msg":"Tablas ya existen"}
+
+            vConn.close()
+        except:
+            datos = {"msg":"DatabaseError Except"}
+
+        return {"result": resu, "data": datos}
+
 
 
     def user_login(pDataBase, pUserName, pUserPwd, pClientKey, pClientSecret):
         vConn = sqlite3.connect(pDataBase)
         cursor = vConn.cursor()
 
-        list_users = UserControl.get_users_list(pDataBase)
-        user_found = False
+        user_found = UserControl.user_table_created(pDataBase)
 
-        if len(list_users.username)>0:
-            user_found = True
-
-        create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255))"
-        cursor.execute(create_sql)
-
-        if user_found == False:
+        if user_found == False:  # crear metodo para crear tablas
+            create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
+            cursor.execute(create_sql)
             index_sql = "CREATE INDEX idxUsers ON users (id)"
+            cursor.execute(index_sql)
+
+            # Crear tabla para registrar los logins: id, user_id, username, Token, FechaHora
+            create_sql = "CREATE TABLE IF NOT EXISTS users_logins (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, username VARCHAR (30), Token VARCHAR (255), FechaHora DATETIME)"
+            cursor.execute(create_sql)
+            index_sql = "CREATE INDEX idxUserLogins ON users_logins (id)"
+            cursor.execute(index_sql)
+
+            # Crear tabla para registrar los API request userid, request, ip, data, Token, FechaHora
+            create_sql = "CREATE TABLE IF NOT EXISTS api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, request VARCHAR (255), ip VARCHAR (127), data VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
+            cursor.execute(create_sql)
+            index_sql = "CREATE INDEX idxUserLogins ON users_logins (id)"
             cursor.execute(index_sql)
 
         select_sql = "SELECT *, ? FROM users WHERE username= ?"
@@ -178,6 +232,7 @@ class UserControl:
                     resultqry = cursor2.execute(update_sql, (vToken, fila[0]))
 #                    rows_affected = cursor2.rowcount
                     resu = "True"
+
                 except:
                     resultqry="Error en "+update_sql
                     vToken = "Error guardando token generado"
@@ -186,10 +241,13 @@ class UserControl:
                 datos ={"username":fila[1],"resultqry":resultqry, "Token":vToken}
             else:
                 resu = "False"
+                datos ={"msg":"Usuario, clave o keys incorrectos."}
         else:
             resu = "False"
+            datos ={"msg":"Usuario no registrado."}
 
         vConn.commit()
+        vConn.close()
 
         return {"result": resu, "data": datos}
 
