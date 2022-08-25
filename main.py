@@ -181,8 +181,8 @@ class DataPersist:
             vDfP = None
 
         return vDfP
-
 #--- FIN clase para acceso a datos SqLite ----
+
 
 app = FastAPI()
 
@@ -411,7 +411,7 @@ async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtName=FmtName.j
 
 @app.get("/users/me")
 async def read_user_me(request: Request): 
-    my_header = request.headers.get('x-token')
+#    my_header = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
 
@@ -447,13 +447,14 @@ async def login_user(username: str = Form(), password: str = Form(), ClientKey: 
 
 
 #--- Get Header ---
-    
 @app.get("/items_header/")
 async def read_items_header(request: Request, x_token: Union[List[str], None] = Header(default=None)):
 #    my_header = request.headers.get('X-Token')
 #    if my_header == "customEncriptedToken":
 #        return {"X-Token": my_header, "otroToken": x_token}
-    if str(x_token) == "customEncriptedToken":
+
+#    if str(x_token) == "customEncriptedToken":
+    if x_token != None:
         return {"tokenRequestHeader": x_token}
     
-    return {"token": "No token"}
+    return {"tokenRequestHeader": "No token"}
