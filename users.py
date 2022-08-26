@@ -110,17 +110,13 @@ class UserControl:
         return {"result": resu, "data": datos}
 
 
-    def user_signin(pDataBase, pUserName, pUserPwd):
-        vConn = sqlite3.connect(pDataBase)
-        cursor = vConn.cursor()
+    def user_signup(pDataBase, pUserName, pUserPwd):
+        vConnS = sqlite3.connect(pDataBase)
+        cursor = vConnS.cursor()
 
-        user_found =  UserControl.user_table_created(pDataBase)
-
-        if user_found == False:
-            create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
-            cursor.execute(create_sql)
-            index_sql = "CREATE INDEX idxUsers ON users (id)"
-            cursor.execute(index_sql)
+        table_found = UserControl.user_table_created(pDataBase)
+        if table_found == False:  # crear metodo para crear tablas
+            UserControl.create_user_data_struct(pDataBase)
 
         select_sql = "SELECT username FROM users WHERE username='"+pUserName+"'"
         dbCursor = cursor.execute(select_sql)
@@ -139,14 +135,16 @@ class UserControl:
             cursor.execute(insert_sql)
             resu = "True"
 
-            select_sql = "SELECT username, ClientKey, ClientSecret FROM users WHERE username='"+pUserName+"'"
+            select_sql = "SELECT id, username, ClientKey, ClientSecret, rol FROM users WHERE username='"+pUserName+"'"
             dbCursor = cursor.execute(select_sql)
-            datos = dbCursor.fetchone()
+            vFila = dbCursor.fetchone()
+            datos = {"msg":"UserFound", "userid":vFila[0], "username":vFila[1], "Token":"No", "userrol":vFila[4]}
+
         else:
             resu = "False"
             datos ={"msg":"Nombre de usuario ya registrado"}
-        vConn.commit()
-        vConn.close()
+        vConnS.commit()
+#        vConnS.close()
 
         return {"result": resu, "data": datos}
 
@@ -163,13 +161,13 @@ class UserControl:
             user_found = UserControl.user_table_created(pDataBase)
 
             if user_found == False:  # crear metodo para crear tablas
-                create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
+                create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME default null, rol VARCHAR(5) NOT NULL DEFAULT 'USR')"
                 cursor.execute(create_sql)
                 index_sql = "CREATE INDEX idxUsers ON users (id)"
                 cursor.execute(index_sql)
 
                 # Crear tabla para registrar los logins: id, user_id, username, Token, FechaHora
-                create_sql = "CREATE TABLE IF NOT EXISTS users_logins (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, username VARCHAR (30), Token VARCHAR (255), FechaHora DATETIME)"
+                create_sql = "CREATE TABLE IF NOT EXISTS users_logins (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, username VARCHAR (30), Token VARCHAR (255), FechaHora DATETIME default null, rol VARCHAR(5) NOT NULL DEFAULT 'USR', accion VARCHAR(10) NOT NULL DEFAULT 'LOGIN')"
                 cursor.execute(create_sql)
                 index_sql = "CREATE INDEX idxUserLogins ON users_logins (id)"
                 cursor.execute(index_sql)
@@ -195,28 +193,12 @@ class UserControl:
 
 
     def user_login(pDataBase, pUserName, pUserPwd, pClientKey, pClientSecret):
-        vConn = sqlite3.connect(pDataBase)
-        cursor = vConn.cursor()
+        vConnL = sqlite3.connect(pDataBase)
+        cursor = vConnL.cursor()
 
-        user_found = UserControl.user_table_created(pDataBase)
-
-        if user_found == False:  # crear metodo para crear tablas
-            create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
-            cursor.execute(create_sql)
-            index_sql = "CREATE INDEX idxUsers ON users (id)"
-            cursor.execute(index_sql)
-
-            # Crear tabla para registrar los logins: id, user_id, username, Token, FechaHora
-            create_sql = "CREATE TABLE IF NOT EXISTS users_logins (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, username VARCHAR (30), Token VARCHAR (255), FechaHora DATETIME)"
-            cursor.execute(create_sql)
-            index_sql = "CREATE INDEX idxUserLogins ON users_logins (id)"
-            cursor.execute(index_sql)
-
-            # Crear tabla para registrar los API request userid, request, ip, data, Token, FechaHora
-            create_sql = "CREATE TABLE IF NOT EXISTS api_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, userid INTEGER, request VARCHAR (255), ip VARCHAR (127), data VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME)"
-            cursor.execute(create_sql)
-            index_sql = "CREATE INDEX idxUserLogins ON users_logins (id)"
-            cursor.execute(index_sql)
+        table_found = UserControl.user_table_created(pDataBase)
+        if table_found == False:  # crear metodo para crear tablas
+            UserControl.create_user_data_struct(pDataBase)
 
         select_sql = "SELECT *, ? FROM users WHERE username= ?"
         dbCursor = cursor.execute(select_sql, ("1",pUserName))
@@ -226,19 +208,18 @@ class UserControl:
         if fila != None:
             if fila[2] == pUserPwd and fila[3] == pClientKey and fila[4] == pClientSecret :
                 vToken= UserControl.genera_token()
+                update_sql = "UPDATE users SET Token= ? WHERE id= ?"
                 try:
-                    cursor2 = vConn.cursor()
-                    update_sql = "UPDATE users SET Token= ? WHERE id= ?"
+                    cursor2 = vConnL.cursor()
                     resultqry = cursor2.execute(update_sql, (vToken, fila[0]))
 #                    rows_affected = cursor2.rowcount
                     resu = "True"
-
                 except:
                     resultqry="Error en "+update_sql
                     vToken = "Error guardando token generado"
                     resu = "False"
-
-                datos ={"username":fila[1],"resultqry":resultqry, "Token":vToken}
+                    
+                datos ={"msg":"UserFound", "resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
             else:
                 resu = "False"
                 datos ={"msg":"Usuario, clave o keys incorrectos."}
@@ -246,8 +227,8 @@ class UserControl:
             resu = "False"
             datos ={"msg":"Usuario no registrado."}
 
-        vConn.commit()
-        vConn.close()
+        vConnL.commit()
+#        vConnL.close()
 
         return {"result": resu, "data": datos}
 

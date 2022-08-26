@@ -184,7 +184,7 @@ class DataPersist:
 #--- FIN clase para acceso a datos SqLite ----
 
 #--- clase para registro y visualización de solicitudes a la API ----
-class ApiRequestsRegisty:
+class ApiActionsRegisty:
 
     def save_api_request(pDataBase, pUserId, pRequest, pIp, pDataRequest, pToken):
         resu = "False"
@@ -202,12 +202,38 @@ class ApiRequestsRegisty:
             resu = "True"
             datos = {"msg":"API Request guardara Ok"}
 
-            print (insert_sql)
+#            print (insert_sql)
             vConn1.commit()
             vConn1.close()
         except Exception as e:   # work on python 3.x
             vConn1.close()
             datos ={"msg":"API request not saved due to ERROR -"+ str(e)}
+
+        return {"result": resu, "data": datos}
+
+
+    def save_login_request(pDataBase, pUserId, pUsername, pRol, pToken, pAccion):
+        resu = "False"
+
+        try:
+            vConn1 = sqlite3.connect(pDataBase)
+            cursor2 = vConn1.cursor()
+
+            now = datetime.now()
+            vFechaHora = now.strftime("%Y-%m-%d %H:%M:%S")
+#            vFechaHora = now.strftime("%Y-%m-%d")
+#            insert_sql = f"INSERT INTO api_requests (userid, username, rol, accion, Token, FechaHora) VALUES ({pUserId}, '{pUsername}', '{pRol}', '{pAccion}', '{pToken}', '{vFechaHora}')"
+            insert_sql = f"INSERT INTO users_logins (userid, username, rol, accion, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
+            cursor2.execute(insert_sql,(pUserId,pUsername,pRol,pAccion,pToken,vFechaHora))
+            resu = "True"
+            datos = {"msg":"User Login guardado Ok"}
+
+#            print (insert_sql)
+            vConn1.commit()
+        except Exception as e:   # work on python 3.x
+            datos ={"msg":"User Login not saved due to ERROR -"+ str(e)}
+#        finally:
+#            vConn1.close()
 
         return {"result": resu, "data": datos}
 
@@ -232,7 +258,6 @@ async def verify_token(request: Request, call_next):
             "message": resultado["data"]["msg"] + ": Error de creación o acceso a SQLite database"
         }, status_code=401)
 
-    pApiRequestRegistry = ApiRequestsRegisty
 
 
 #    if my_header == "customEncriptedToken":
@@ -246,6 +271,7 @@ async def verify_token(request: Request, call_next):
 #        vUserName = resultado["data"]["username"]
         vUserId = resultado["data"]["user_id"]
 
+        pApiRequestRegistry = ApiActionsRegisty
         respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", "-", my_header_token)
 
         if resultado["result"] == "False":
@@ -272,13 +298,14 @@ async def verify_token(request: Request, call_next):
 
         pos = actual_url.find("/docs")
         pos2 = actual_url.find("/openapi.json")
-        pos3 = actual_url.find("/users/signin")
+        pos3 = actual_url.find("/users/signup")
         pos4 = actual_url.find("/users/login")
 
 #        vUserId = request.user
         vUserId = -1  # resultado["data"]["user_id"]
+        pApiRequestRegistry = ApiActionsRegisty
         respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", "-", "None")
-        print(respuesta)
+#        print(respuesta)
 
         pos5 = 0
         if actual_url == str(request.base_url):
@@ -475,11 +502,29 @@ async def read_user(user_id: str):
     return {"resultado": resultado}
 
 
-@app.post("/users/signin/")
-async def login_user(username: str = Form(), password: str = Form()):
+@app.post("/users/signup/")
+async def signup_user(username: str = Form(), password: str = Form()):
     pUserAccess = users.UserControl
 
-    resultado = pUserAccess.user_signin("yFinance.db", username, password)
+    resultado = pUserAccess.user_signup("yFinance.db", username, password)
+
+#    print(resultado)
+
+    if resultado["data"]["msg"] == "UserFound":
+        vUserId = resultado["data"]["userid"]
+        vUsername = resultado["data"]["username"]
+        vRol = resultado["data"]["userrol"]
+        vToken = resultado["data"]["Token"]
+    else:
+        vUserId = -1
+        vUsername = username
+        vRol = "No"
+        vToken = "Signup error"
+
+    pApiSignupRegistry = ApiActionsRegisty
+    respuesta_signup = pApiSignupRegistry.save_login_request("yFinance.db", vUserId, vUsername, vRol, vToken,"SIGNUP")
+
+    
 
     return {"resultado": resultado}
 
@@ -488,6 +533,23 @@ async def login_user(username: str = Form(), password: str = Form()):
 async def login_user(username: str = Form(), password: str = Form(), ClientKey: str = Form(), ClientSecret: str = Form()):
     pUserAccess = users.UserControl
     resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey, ClientSecret)
+
+#    datos ={"msg":"UserFound", "resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
+#    datos ={"msg":"Usuario, clave o keys incorrectos."}
+
+    if resultado["data"]["msg"] == "UserFound":
+        vUserId = resultado["data"]["userid"]
+        vUsername = resultado["data"]["username"]
+        vRol = resultado["data"]["userrol"]
+        vToken = resultado["data"]["Token"]
+    else:
+        vUserId = -1
+        vUsername = username
+        vRol = "No"
+        vToken = "Login error"
+
+    pApiLoginRegistry = ApiActionsRegisty
+    respuesta_login = pApiLoginRegistry.save_login_request("yFinance.db", vUserId, vUsername, vRol, vToken,"LOGIN")
 
     return {"username": resultado}
 
