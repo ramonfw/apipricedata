@@ -138,7 +138,7 @@ class UserControl:
             select_sql = "SELECT id, username, ClientKey, ClientSecret, rol FROM users WHERE username='"+pUserName+"'"
             dbCursor = cursor.execute(select_sql)
             vFila = dbCursor.fetchone()
-            datos = {"msg":"UserFound", "userid":vFila[0], "username":vFila[1], "Token":"No", "userrol":vFila[4]}
+            datos = {"msg":"UserFound", "userid":vFila[0], "username":vFila[1], "ClientKey":vFila[2], "ClientSecret":vFila[3], "Token":"No", "userrol":vFila[4]}
 
         else:
             resu = "False"
