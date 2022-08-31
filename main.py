@@ -3,6 +3,11 @@
 
 # Visualizador de Base de datos:  DB Browser for SQLite
 
+from fastapi import APIRouter
+
+from internal import admin
+#from .routers import items, users
+
 from typing import Union, List
 from fastapi import FastAPI
 from fastapi import Request
@@ -23,7 +28,7 @@ import numpy as np
 import sqlite3
 
 # for users control
-import users
+import usersController
 
 # for obtain forex and stock market data
 from pandas_datareader import data as pdr
@@ -37,16 +42,16 @@ from datetime import timedelta
 #--- para  parametros ENUM ---
 from enum import Enum
 
-class ModelName(str, Enum):
+class ModelEnum(str, Enum):
     alexnet = "alexnet"
     resnet = "resnet"
     lenet = "lenet"
 
-class FmtName(str, Enum):
+class FmtEnum(str, Enum):
     json = "json"
     dict = "dict"
 
-class IntervalName(str, Enum):
+class IntervalEnum(str, Enum):
     m1 = "1m"
     m2 = "2m"
     m5 = "5m"
@@ -240,17 +245,69 @@ class ApiActionsRegisty:
 #--- clase para acceso a datos SqLite ----
 
 
+str_header = ". <br>(<b>Needs a <u>user login token</u> in the <u>x-token header param</u></b>)"
 
-app = FastAPI()
+tags_metadata = [
+    {
+        "name": "root",
+        "description": "Permit test if API is working, receiving a wellcome response.",
+    },
+    {
+        "name": "read_market_data_yhfin",
+        "description": "Download data from Yahoo finance for Symbol, data range and time frame passed as parameters.<br>Response is in selected format, and data isa saved/not saved in SQLite database"+str_header,
+    },
+    {
+        "name": "read_market_data_db",
+        "description": "Get data from SQLite database for Symbol, data range and time frame passed as parameters.<br>Response is in selected format"+str_header,
+    },
+    {
+        "name": "market_data_productList_db",
+        "description": "Get a list of registered Symbols saved in SQLite database"+str_header,
+    },
+    {
+        "name": "market_data_product_info_db",
+        "description": "Get info about a Symbol/product saved in SQLite database"+str_header,
+    },
+    {
+        "name": "read_user_me",
+        "description": "Get data about current user (ME)"+str_header,
+    },
+    {
+        "name": "read_user",
+        "description": "Get data about the user passed as parameter"+str_header,
+    },
+    {
+        "name": "signup_user",
+        "description": "Sign Up the user with a given username and password, passed as parameters.<br>Response includes the ClientKey and ClientSecret, needed for login.",
+    },
+    {
+        "name": "login_user",
+        "description": "Login user with a given username, password, ClientKey and ClientSecret, passed as parameters",
+    },
+    {
+        "name": "read_items_header",
+        "description": "Endpoint includes for monitoring"+str_header,
+    },
+    
+]
 
+app = FastAPI(
+    title="API for downloading and show Yahoo finance data",
+    description="API permit download and query stocks data from Yahoo Finance, and is a security access implementation test.",
+    version="1.1.2",
+    openapi_tags=tags_metadata+admin.tags_metadata_admin,
+)
+
+app.include_router(admin.router)
 
 @app.middleware("http")
 async def verify_token(request: Request, call_next):
     my_header_token = request.headers.get('X-Token')
 #    print("my_header ",my_header)
 
-    pUserAccess = users.UserControl
+    params = request.query_params
 
+    pUserAccess = usersController.UserControl
     resultado = pUserAccess.create_user_data_struct("yFinance.db")
 
     if (resultado["result"]=="False" and resultado["data"]["msg"] in ("DatabaseError Except","DatabaseError NoExec" )):
@@ -258,29 +315,28 @@ async def verify_token(request: Request, call_next):
             "message": resultado["data"]["msg"] + ": Error de creación o acceso a SQLite database"
         }, status_code=401)
 
+    actual_url = str(request.url)
 
-
-#    if my_header == "customEncriptedToken":
     if my_header_token != None:
-
         resultado = pUserAccess.check_token("yFinance.db", my_header_token)
 
-#        print(resultado)
-#        print(resultado["data"]["username"])
-
-#        vUserName = resultado["data"]["username"]
         vUserId = resultado["data"]["user_id"]
+        vUserRol = resultado["data"]["rol"]
+
+        pos5 = actual_url.find("/admin")
+        if pos5>0 and vUserRol != "ADM" and vUserRol == "SADM":
+            return JSONResponse(content={
+                "message": "Usuario "+resultado["data"]["user_i"] + " no tiene suficientes privilegios"
+            }, status_code=401)
 
         pApiRequestRegistry = ApiActionsRegisty
-        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", "-", my_header_token)
+        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", str(params), my_header_token)
 
         if resultado["result"] == "False":
             return JSONResponse(content={
                 "message": "Token incorrect (or not set)." + respuesta["data"]["msg"]
             }, status_code=401)
         else:
-#            request["username"] = resultado["data"]["username"]
-
             new_header = MutableHeaders(request._headers)
             new_header["x-username"] = resultado["data"]["username"]
             new_header["x-userid"] = resultado["data"]["user_id"]
@@ -292,26 +348,24 @@ async def verify_token(request: Request, call_next):
             response = await call_next(request)
             return response
     else:
-#        print(request.query_params)
-#        print(request.url)
-        actual_url = str(request.url)
-
         pos = actual_url.find("/docs")
         pos2 = actual_url.find("/openapi.json")
         pos3 = actual_url.find("/users/signup")
         pos4 = actual_url.find("/users/login")
 
+        pos5 = actual_url.find("/admin")
+
 #        vUserId = request.user
         vUserId = -1  # resultado["data"]["user_id"]
         pApiRequestRegistry = ApiActionsRegisty
-        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", "-", "None")
+        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", str(params), "None")
 #        print(respuesta)
 
-        pos5 = 0
+        pos10 = 0
         if actual_url == str(request.base_url):
-            pos5 = 1
+            pos10 = 1
 
-        if pos>0 or pos2>0 or pos3>0 or pos4>0 or pos5>0:
+        if pos>0 or pos2>0 or pos3>0 or pos4>0 or pos5>0 or pos10>0:
             response = await call_next(request)
             return response
 
@@ -321,7 +375,7 @@ async def verify_token(request: Request, call_next):
 
 
 
-@app.get('/')
+@app.get('/', tags=["root"] )
 async def root(request: Request, x_token: Union[List[str], None] = Header(default=None)):
     my_header_token = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
@@ -340,8 +394,8 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
-@app.get("/market-data/yhfin/")
-async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalName="1h", fmt: FmtName=FmtName.json, dsave: GuardarSN="no" ):
+@app.get("/market-data/yhfin/", tags=["read_market_data_yhfin"] )
+async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalEnum="1h", fmt: FmtEnum=FmtEnum.json, dsave: GuardarSN="no" ):
 
     now = datetime.now()
     if fend=="today":
@@ -391,8 +445,8 @@ async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: st
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/db/?q=TSLA
-@app.get("/market-data/db/")
-async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalName="1h", fmt: FmtName=FmtName.json ):
+@app.get("/market-data/db/", tags=["read_market_data_db"])
+async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalEnum="1h", fmt: FmtEnum=FmtEnum.json ):
 
     now = datetime.now()
     if fend=="today":
@@ -435,8 +489,8 @@ async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/list-products-db/
-@app.get("/market-data/products-list-db/")
-async def market_data_productList_db(db: str="yFinance.db", fmt: FmtName=FmtName.json ):
+@app.get("/market-data/products-list-db/", tags=["market_data_productList_db"] )
+async def market_data_productList_db(db: str="yFinance.db", fmt: FmtEnum=FmtEnum.json ):
 
     results = {"items": [{"db": db, "format": fmt}]}
     if db:
@@ -459,8 +513,8 @@ async def market_data_productList_db(db: str="yFinance.db", fmt: FmtName=FmtName
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/list-products-db/
-@app.get("/market-data/product-info-db/")
-async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtName=FmtName.json ):
+@app.get("/market-data/product-info-db/", tags=["market_data_product_info_db"])
+async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtEnum=FmtEnum.json ):
 
     results = {"items": [{"d": symbol, "format": fmt}]}
     if symbol:
@@ -482,7 +536,7 @@ async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtName=FmtName.j
     return results
 
 
-@app.get("/users/me")
+@app.get("/users/me", tags=["read_user_me"])
 async def read_user_me(request: Request): 
 #    my_header = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
@@ -493,18 +547,18 @@ async def read_user_me(request: Request):
     return {"username": my_username,"userid": my_userid}
 
 
-@app.get("/users/{user_id}")
+@app.get("/users/{user_id}", tags=["read_user"])
 async def read_user(user_id: str):
 
-    pUserAccess = users.UserControl
+    pUserAccess = usersController.UserControl
     resultado = pUserAccess.get_user_by_id("yFinance.db", user_id)
 
     return {"resultado": resultado}
 
 
-@app.post("/users/signup/")
+@app.post("/users/signup/", tags=["signup_user"])
 async def signup_user(username: str = Form(), password: str = Form()):
-    pUserAccess = users.UserControl
+    pUserAccess = usersController.UserControl
 
     resultado = pUserAccess.user_signup("yFinance.db", username, password)
 
@@ -524,14 +578,12 @@ async def signup_user(username: str = Form(), password: str = Form()):
     pApiSignupRegistry = ApiActionsRegisty
     respuesta_signup = pApiSignupRegistry.save_login_request("yFinance.db", vUserId, vUsername, vRol, vToken,"SIGNUP")
 
-    
-
     return {"resultado": resultado}
 
 
-@app.post("/users/login/")
+@app.post("/users/login/", tags=["login_user"])
 async def login_user(username: str = Form(), password: str = Form(), ClientKey: str = Form(), ClientSecret: str = Form()):
-    pUserAccess = users.UserControl
+    pUserAccess = usersController.UserControl
     resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey, ClientSecret)
 
 #    datos ={"msg":"UserFound", "resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
@@ -555,7 +607,7 @@ async def login_user(username: str = Form(), password: str = Form(), ClientKey: 
 
 
 #--- Get Header ---
-@app.get("/items_header/")
+@app.get("/items_header/", tags=["read_items_header"])
 async def read_items_header(request: Request, x_token: Union[List[str], None] = Header(default=None)):
 #    my_header = request.headers.get('X-Token')
 #    if my_header == "customEncriptedToken":

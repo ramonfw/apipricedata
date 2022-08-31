@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 
 from datetime import datetime
+from datetime import timedelta
 
 import hashlib
 
@@ -25,6 +26,7 @@ class UserControl:
         vConn1 = sqlite3.connect(pDataBase)    
         username = "-"
         user_id = -1
+        vRol = "-"
 
         try:
             cursor = vConn1.cursor()
@@ -41,6 +43,7 @@ class UserControl:
                 resu = "True"
                 username = fila[1]
                 user_id = str(fila[0])
+                vRol = fila[7]
 
         except:
             resultqry="Error en "+select_sql
@@ -49,7 +52,7 @@ class UserControl:
 
         vConn1.close()
 
-        datos ={"username":username,"user_id":user_id,"resultqry":resultqry, "Token":pToken}
+        datos ={"username":username,"user_id":user_id,"rol":vRol,"resultqry":resultqry, "Token":pToken}
         return {"result": resu, "data": datos}
 
 
@@ -84,6 +87,49 @@ class UserControl:
 
         vConn1.close()
         return vDfP
+
+
+
+    def get_user_list(pDataBase, pUserId):
+        vConn1 = sqlite3.connect(pDataBase)    
+        cursor = vConn1.cursor()
+        respuesta ={}
+        resu = "False"
+
+        try:  
+            if pUserId<1:
+                vSelect_sql = "SELECT * FROM users "
+                dbCursor = cursor.execute(vSelect_sql)
+            else:
+                vSelect_sql = "SELECT * FROM users where id = ? and ?=?"
+                dbCursor = cursor.execute(vSelect_sql,(pUserId,1,1))
+
+            filas = dbCursor.fetchall()
+
+            nombreFilas= [dataNombres[0] for dataNombres in cursor.description]
+            nombreFilas.pop(2)
+
+            datos = []
+
+            for tfila in filas:
+                fila = list(tfila)
+                fila.pop(2)
+                
+                vDatos = {}
+                for i in range(len(fila)):
+                    vDatos[nombreFilas[i]] = fila[i]
+                datos.append(vDatos)
+                resu = "True"
+            if resu=="True":  
+                msg = "Listado obtenido satisfactoriamente"  
+            else:  
+                msg = "Listado obtenido vacio, no existe el id " + str(pUserId)
+            respuesta ={"result":resu,"msg":msg,"fieldnames":nombreFilas,"data":datos}
+        except Exception as e:   # work on python 3.x
+            respuesta ={"result":"false","msg":"User list not found due to ERROR -"+ str(e),"data":[]}
+
+        vConn1.close()
+        return respuesta
 
 
 
