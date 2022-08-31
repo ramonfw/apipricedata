@@ -134,7 +134,7 @@ async def read_id_requests(user_id: int):
 
 
 @router.get("/request/date/", tags=["read_date_requests"])
-async def read_date_requests(user_id: int):
+async def read_date_requests(fstart: str="-30", fend: str="today"):
 
     now = datetime.now()
     if fend=="today":
