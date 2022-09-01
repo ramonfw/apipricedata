@@ -66,7 +66,7 @@ class IntervalEnum(str, Enum):
     mo1 = "1mo"
     mo3 = "3mo"
 
-class GuardarSN(str, Enum):
+class GuardarEnum(str, Enum):
     si = "si"
     no = "no"
 
@@ -269,24 +269,24 @@ tags_metadata = [
         "description": "Get info about a Symbol/product saved in SQLite database"+str_header,
     },
     {
-        "name": "read_user_me",
+        "name": "Read_user_current",
         "description": "Get data about current user (ME)"+str_header,
     },
     {
-        "name": "read_user",
+        "name": "Read_user_by_id",
         "description": "Get data about the user passed as parameter"+str_header,
     },
     {
-        "name": "signup_user",
+        "name": "Signup_user",
         "description": "Sign Up the user with a given username and password, passed as parameters.<br>Response includes the ClientKey and ClientSecret, needed for login.",
     },
     {
-        "name": "login_user",
+        "name": "Login_user",
         "description": "Login user with a given username, password, ClientKey and ClientSecret, passed as parameters",
     },
     {
         "name": "read_items_header",
-        "description": "Endpoint includes for monitoring"+str_header,
+        "description": "Endpoint included for monitoring"+str_header,
     },
     
 ]
@@ -362,7 +362,6 @@ async def verify_token(request: Request, call_next):
         vUserId = -1  # resultado["data"]["user_id"]
         pApiRequestRegistry = ApiActionsRegisty
         respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", str(params), "None")
-#        print(respuesta)
 
         pos10 = 0
         if actual_url == str(request.base_url):
@@ -383,13 +382,10 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
     my_header_token = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
-
 #    print("request.header2: ", request.headers)
 
-#    if x_token == "customEncriptedToken":
     if x_token != None:
         return {"message": "Wellcome to API for accessing Yahoo Finance Data1","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
-#    elif my_header_token == "customEncriptedToken":
     elif my_header_token != None:
         return {"message": "Wellcome to API for accessing Yahoo Finance Data2","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
     else:
@@ -397,8 +393,8 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
-@app.get("/market-data/yhfin/", tags=["Read_market_data_Yahoo_Finance"] )
-async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalEnum="1h", fmt: FmtEnum=FmtEnum.json, dsave: GuardarSN="no" ):
+@app.post("/market-data/yhfin/", tags=["Read_market_data_Yahoo_Finance"] )
+async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalEnum="1h", fmt: FmtEnum=FmtEnum.json, dsave: GuardarEnum=GuardarEnum.si):
 
     now = datetime.now()
     if fend=="today":
@@ -539,18 +535,16 @@ async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtEnum=FmtEnum.j
     return results
 
 
-@app.get("/users/me", tags=["read_user_me"])
+@app.get("/users/me", tags=["Read_user_current"])
 async def read_user_me(request: Request): 
 #    my_header = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
 
-#    print("request.header2: ", request.headers)
-
     return {"username": my_username,"userid": my_userid}
 
 
-@app.get("/users/{user_id}", tags=["read_user"])
+@app.get("/users/{user_id}", tags=["Read_user_by_id"])
 async def read_user(user_id: str):
 
     pUserAccess = usersController.UserControl
@@ -559,7 +553,7 @@ async def read_user(user_id: str):
     return {"resultado": resultado}
 
 
-@app.post("/users/signup/", tags=["signup_user"])
+@app.post("/users/signup/", tags=["Signup_user"])
 async def signup_user(username: str = Form(), password: str = Form()):
     pUserAccess = usersController.UserControl
 
@@ -584,7 +578,7 @@ async def signup_user(username: str = Form(), password: str = Form()):
     return {"resultado": resultado}
 
 
-@app.post("/users/login/", tags=["login_user"])
+@app.post("/users/login/", tags=["Login_user"])
 async def login_user(username: str = Form(), password: str = Form(), ClientKey: str = Form(), ClientSecret: str = Form()):
     pUserAccess = usersController.UserControl
     resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey, ClientSecret)

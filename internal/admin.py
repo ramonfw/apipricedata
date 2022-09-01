@@ -39,28 +39,32 @@ str_header_admin = ". <br>(<b>Needs a <u>user login token</u> in the <u>x-token 
 
 tags_metadata_admin = [
     {
-        "name": "read_all_user_list",
+        "name": "Read_all_user_list",
         "description": "Get a list of all the users registered"+str_header_admin,
     },
     {
-        "name": "read_user_id",
+        "name": "Read_user_data",
         "description": "Get a user data for given user_id"+str_header_admin,
     },
     {
-        "name": "read_logins_id",
+        "name": "Read_logins_for_id",
         "description": "Get logins list for a given user_id"+str_header_admin,
     },
     {
-        "name": "read_logins_date",
+        "name": "Read_logins_in_date_range",
         "description": "Get logins list for a given date range"+str_header_admin,
     },
     {
-        "name": "read_id_requests",
+        "name": "Read_requests_for_id",
         "description": "Get API requests list for a given user_id"+str_header_admin,
     },
     {
-        "name": "read_date_requests",
+        "name": "Read_requests_in_date_range",
         "description": "Get API requests list for a given date range"+str_header_admin,
+    },
+    {
+        "name": "Update_user_rol",
+        "description": "Update user rol for a given userId, for more access level to user and logs data"+str_header_admin,
     },
 
 ]
@@ -77,7 +81,7 @@ router = APIRouter(
 
 #-- USERS LIST ---
 
-@router.get("/users/list/all/", tags=["read_all_user_list"])
+@router.get("/users/list/all/", tags=["Read_all_user_list"])
 async def read_all_user_list():
     pUserAccess = usersController.UserControl
 
@@ -85,7 +89,7 @@ async def read_all_user_list():
     return {"data":vDatos}
 
 
-@router.get("/users/list/{user_id}", tags=["read_user_id"])
+@router.get("/users/list/{user_id}", tags=["Read_user_data"])
 async def read_user_id(user_id: int):
     pUserAccess = usersController.UserControl
 
@@ -96,7 +100,7 @@ async def read_user_id(user_id: int):
 
 #-- USERS LOGINS LISTS---
 
-@router.get("/users/logins/id/", tags=["read_logins_id"])
+@router.get("/users/logins/id/", tags=["Read_logins_for_id"])
 async def read_logins_id(user_id: int, scope:ScopeEnum = ScopeEnum.all):
     pLogAccess = logController.LogControl
 
@@ -105,7 +109,7 @@ async def read_logins_id(user_id: int, scope:ScopeEnum = ScopeEnum.all):
 
 
 
-@router.get("/users/logins/date/", tags=["read_logins_date"])
+@router.get("/users/logins/date/", tags=["Read_logins_in_date_range"])
 async def read_logins_date(fstart: str="-30", fend: str="today", scope:ScopeEnum = ScopeEnum.all):
 
     now = datetime.now()
@@ -130,7 +134,7 @@ async def read_logins_date(fstart: str="-30", fend: str="today", scope:ScopeEnum
 
 #-- REQUESTS LIST ---
 
-@router.get("/request/id/", tags=["read_id_requests"])
+@router.get("/requests/id/", tags=["Read_requests_for_id"])
 async def read_id_requests(user_id: int):
     pLogAccess = logController.LogControl
 
@@ -138,7 +142,7 @@ async def read_id_requests(user_id: int):
     return {"data":vDatos}
 
 
-@router.get("/request/date/", tags=["read_date_requests"])
+@router.get("/requests/date/", tags=["Read_requests_in_date_range"])
 async def read_date_requests(fstart: str="-30", fend: str="today"):
 
     now = datetime.now()
@@ -164,7 +168,7 @@ async def read_date_requests(fstart: str="-30", fend: str="today"):
 #-- EDIT ROLS ---
 
 @router.put("/rol/{user_id}",
-    tags=["update_user_rol"],
+    tags=["Update_user_rol"],
     responses={403: {"description": "Operation forbidden"}},
 )
 async def update_user_rol(request: Request, user_id: str, user_rol:RolEnum=RolEnum.inv):
