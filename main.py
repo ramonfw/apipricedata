@@ -249,23 +249,23 @@ str_header = ". <br>(<b>Needs a <u>user login token</u> in the <u>x-token header
 
 tags_metadata = [
     {
-        "name": "root",
+        "name": "Root",
         "description": "Permit test if API is working, receiving a wellcome response.",
     },
     {
-        "name": "read_market_data_yhfin",
-        "description": "Download data from Yahoo finance for Symbol, data range and time frame passed as parameters.<br>Response is in selected format, and data isa saved/not saved in SQLite database"+str_header,
+        "name": "Read_market_data_Yahoo_Finance",
+        "description": "Download data from Yahoo finance for Symbol, data range and time frame passed as parameters. Response is in selected format, and data isa saved/not saved in SQLite database"+str_header,
     },
     {
-        "name": "read_market_data_db",
-        "description": "Get data from SQLite database for Symbol, data range and time frame passed as parameters.<br>Response is in selected format"+str_header,
+        "name": "Read_market_data_SQLite_DB",
+        "description": "Get data from SQLite database for Symbol, data range and time frame passed as parameters. Response is in selected format"+str_header,
     },
     {
-        "name": "market_data_productList_db",
+        "name": "Market_data_product_list_SQLite_DB",
         "description": "Get a list of registered Symbols saved in SQLite database"+str_header,
     },
     {
-        "name": "market_data_product_info_db",
+        "name": "Market_data_product_info_SQLite_DB",
         "description": "Get info about a Symbol/product saved in SQLite database"+str_header,
     },
     {
@@ -326,7 +326,7 @@ async def verify_token(request: Request, call_next):
         pos5 = actual_url.find("/admin")
         if pos5>0 and vUserRol != "ADM" and vUserRol == "SADM":
             return JSONResponse(content={
-                "message": "Usuario "+resultado["data"]["user_i"] + " no tiene suficientes privilegios"
+                "message": "Usuario "+vUserId + " no tiene suficientes privilegios"
             }, status_code=401)
 
         pApiRequestRegistry = ApiActionsRegisty
@@ -339,7 +339,8 @@ async def verify_token(request: Request, call_next):
         else:
             new_header = MutableHeaders(request._headers)
             new_header["x-username"] = resultado["data"]["username"]
-            new_header["x-userid"] = resultado["data"]["user_id"]
+            new_header["x-userid"] = vUserId
+            new_header["x-userrol"] = vUserRol
             new_header["x-cust-txt-response"] = respuesta["data"]["msg"]
             request._headers = new_header
 
@@ -354,6 +355,8 @@ async def verify_token(request: Request, call_next):
         pos4 = actual_url.find("/users/login")
 
         pos5 = actual_url.find("/admin")
+#-- quitar lo siguiente para testear prefix /admin
+        pos5 = 0
 
 #        vUserId = request.user
         vUserId = -1  # resultado["data"]["user_id"]
@@ -375,7 +378,7 @@ async def verify_token(request: Request, call_next):
 
 
 
-@app.get('/', tags=["root"] )
+@app.get('/', tags=["Root"] )
 async def root(request: Request, x_token: Union[List[str], None] = Header(default=None)):
     my_header_token = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
@@ -394,7 +397,7 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
-@app.get("/market-data/yhfin/", tags=["read_market_data_yhfin"] )
+@app.get("/market-data/yhfin/", tags=["Read_market_data_Yahoo_Finance"] )
 async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalEnum="1h", fmt: FmtEnum=FmtEnum.json, dsave: GuardarSN="no" ):
 
     now = datetime.now()
@@ -445,7 +448,7 @@ async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: st
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/db/?q=TSLA
-@app.get("/market-data/db/", tags=["read_market_data_db"])
+@app.get("/market-data/db/", tags=["Read_market_data_SQLite_DB"])
 async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="today", tinterval: IntervalEnum="1h", fmt: FmtEnum=FmtEnum.json ):
 
     now = datetime.now()
@@ -489,7 +492,7 @@ async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/list-products-db/
-@app.get("/market-data/products-list-db/", tags=["market_data_productList_db"] )
+@app.get("/market-data/products-list-db/", tags=["Market_data_product_list_SQLite_DB"] )
 async def market_data_productList_db(db: str="yFinance.db", fmt: FmtEnum=FmtEnum.json ):
 
     results = {"items": [{"db": db, "format": fmt}]}
@@ -513,7 +516,7 @@ async def market_data_productList_db(db: str="yFinance.db", fmt: FmtEnum=FmtEnum
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/list-products-db/
-@app.get("/market-data/product-info-db/", tags=["market_data_product_info_db"])
+@app.get("/market-data/product-info-db/", tags=["Market_data_product_info_SQLite_DB"])
 async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtEnum=FmtEnum.json ):
 
     results = {"items": [{"d": symbol, "format": fmt}]}

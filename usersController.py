@@ -279,3 +279,46 @@ class UserControl:
         return {"result": resu, "data": datos}
 
 
+    def user_change_rol(pDataBase, pUserIdClient, pNuevoRol):
+        vConnL = sqlite3.connect(pDataBase)
+        cursor = vConnL.cursor()
+
+        select_sql = "SELECT id, username, rol, ? FROM users WHERE id= ?"
+        dbCursor = cursor.execute(select_sql, ("1",pUserIdClient))
+
+#-- Puede almacenarse cambio de rol si se desea, creando la correspondiente tabla
+
+        datos = {}
+        fila = dbCursor.fetchone()
+        resu = "False"
+
+        if fila != None:
+            vViejoRol = fila[2]
+            if vViejoRol != pNuevoRol:
+                update_sql = "UPDATE users SET rol= ? WHERE id= ?"
+                try:
+                    cursor2 = vConnL.cursor()
+                    resultqry = cursor2.execute(update_sql, (pNuevoRol, pUserIdClient))
+                    if cursor2.rowcount>0:
+                        resu = "True"
+                except:
+                    resultqry="Error en "+update_sql
+            else:
+                resultqry="El nuevo rol es igual al anterior"
+
+            datos ={"result":resu, "msg":"UserFound", "userid":fila[0], "username":fila[1], "viejorol":vViejoRol, "nuevorol":pNuevoRol, "resultqry":resultqry}
+        else:
+            datos ={"result":resu, "msg":"Usuario no registrado."}
+
+        vConnL.commit()
+#        vConnL.close()
+
+        return {"result": resu, "data": datos}
+
+
+
+
+                    
+
+
+

@@ -11,6 +11,8 @@ from datetime import timedelta
 import hashlib
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Request
+
 
 # for users control
 import usersController
@@ -23,6 +25,7 @@ class ScopeEnum(str, Enum):
     all = "ALL"
     login = "LOGIN"
     signup = "SIGNUP"
+
 
 class RolEnum(str, Enum):
     sadm = "SADM"  #superadmin
@@ -72,7 +75,8 @@ router = APIRouter(
 
 
 
-#--USERS LIST ---
+#-- USERS LIST ---
+
 @router.get("/users/list/all/", tags=["read_all_user_list"])
 async def read_all_user_list():
     pUserAccess = usersController.UserControl
@@ -90,7 +94,8 @@ async def read_user_id(user_id: int):
 
 
 
-#--USERS LOGINS ---
+#-- USERS LOGINS LISTS---
+
 @router.get("/users/logins/id/", tags=["read_logins_id"])
 async def read_logins_id(user_id: int, scope:ScopeEnum = ScopeEnum.all):
     pLogAccess = logController.LogControl
@@ -117,7 +122,6 @@ async def read_logins_date(fstart: str="-30", fend: str="today", scope:ScopeEnum
     elif fstart>fend:
         raise HTTPException(status_code=200, detail="fecha inicio("+fstart+") mayor que fecha fin("+fend+")")
 
-#        def get_date_logins(pDataBase, pFIni, pFEnd, pScope):
     pLogAccess = logController.LogControl
 
     vDatos = pLogAccess.get_date_logins("yFinance.db", fstart, fend, scope)
@@ -125,6 +129,7 @@ async def read_logins_date(fstart: str="-30", fend: str="today", scope:ScopeEnum
 
 
 #-- REQUESTS LIST ---
+
 @router.get("/request/id/", tags=["read_id_requests"])
 async def read_id_requests(user_id: int):
     pLogAccess = logController.LogControl
@@ -156,17 +161,24 @@ async def read_date_requests(fstart: str="-30", fend: str="today"):
     return {"data":vDatos}
 
 
+#-- EDIT ROLS ---
+
 @router.put("/rol/{user_id}",
     tags=["update_user_rol"],
     responses={403: {"description": "Operation forbidden"}},
 )
-async def update_user_rol(user_id: str, user_rol:RolEnum=RolEnum.inv):
+async def update_user_rol(request: Request, user_id: str, user_rol:RolEnum=RolEnum.inv):
+    userid_admin = request.headers.get('x-userid')
+    userrol_admin = request.headers.get('x-userrol')
 
+#    print("userrol_admin: "+userrol_admin)
 
-#    if item_id != "plumbus":
-#        raise HTTPException(
-#            status_code=403, detail="You can only update the item: plumbus"
-#        )
+    if userrol_admin not in (RolEnum.sadm,RolEnum.adm):
+        vDatos ={"result":"False", "msg":"Usuario no tiene privilegios para cambio de roles"}
+    elif userrol_admin != RolEnum.sadm and user_rol in (RolEnum.sadm ,RolEnum.adm ,RolEnum.usr):
+        vDatos ={"result":"False", "msg":"Usuario no tiene suficientes privilegios para cambiar el rol a "+user_rol}
+    else:
+        pUserAccess = usersController.UserControl
+        vDatos = pUserAccess.user_change_rol("yFinance.db", user_id, user_rol)
 
-
-    return {"userid": user_id, "name": "The great Plumbus"}
+    return vDatos
