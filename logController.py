@@ -185,4 +185,55 @@ class LogControl:
         return respuesta
 
 
+    def save_api_request(pDataBase, pUserId, pRequest, pIp, pDataRequest, pToken):
+        resu = "False"
+        vRequest = str(pRequest)
+        try:
+            vConn1 = sqlite3.connect(pDataBase)
+            cursor2 = vConn1.cursor()
+
+            now = datetime.now()
+            vFechaHora = now.strftime("%Y-%m-%d %H:%M:%S")
+#            vFechaHora = now.strftime("%Y-%m-%d")
+#            insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES ({pUserId}, '{pRequest}', '{pIp}', '{pDataRequest}', '{pToken}', '{vFechaHora}')"
+            insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
+            cursor2.execute(insert_sql,(pUserId,vRequest,pIp,pDataRequest,pToken,vFechaHora))
+            resu = "True"
+            datos = {"msg":"API Request guardara Ok"}
+
+#            print (insert_sql)
+            vConn1.commit()
+            vConn1.close()
+        except Exception as e:   # work on python 3.x
+            vConn1.close()
+            datos ={"msg":"API request not saved due to ERROR -"+ str(e)}
+
+        return {"result": resu, "data": datos}
+
+
+    def save_login_request(pDataBase, pUserId, pUsername, pRol, pToken, pAccion):
+        resu = "False"
+
+        try:
+            vConn1 = sqlite3.connect(pDataBase)
+            cursor2 = vConn1.cursor()
+
+            now = datetime.now()
+            vFechaHora = now.strftime("%Y-%m-%d %H:%M:%S")
+#            vFechaHora = now.strftime("%Y-%m-%d")
+#            insert_sql = f"INSERT INTO api_requests (userid, username, rol, accion, Token, FechaHora) VALUES ({pUserId}, '{pUsername}', '{pRol}', '{pAccion}', '{pToken}', '{vFechaHora}')"
+            insert_sql = f"INSERT INTO users_logins (userid, username, rol, accion, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
+            cursor2.execute(insert_sql,(pUserId,pUsername,pRol,pAccion,pToken,vFechaHora))
+            resu = "True"
+            datos = {"msg":"User Login guardado Ok"}
+
+#            print (insert_sql)
+            vConn1.commit()
+        except Exception as e:   # work on python 3.x
+            datos ={"msg":"User Login not saved due to ERROR -"+ str(e)}
+#        finally:
+#            vConn1.close()
+
+        return {"result": resu, "data": datos}
+
 
