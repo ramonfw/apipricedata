@@ -238,7 +238,7 @@ class UserControl:
 
 
 
-    def user_login(pDataBase, pUserName, pUserPwd, pClientKey, pClientSecret):
+    def user_login(pDataBase, pUserName, pUserPwd, pClientKey):
         vConnL = sqlite3.connect(pDataBase)
         cursor = vConnL.cursor()
 
@@ -252,7 +252,7 @@ class UserControl:
         datos = {}
         fila = dbCursor.fetchone()
         if fila != None:
-            if fila[2] == pUserPwd and fila[3] == pClientKey and fila[4] == pClientSecret :
+            if fila[2] == pUserPwd and fila[3] == pClientKey:
                 vToken= UserControl.genera_token()
                 update_sql = "UPDATE users SET Token= ? WHERE id= ?"
                 try:

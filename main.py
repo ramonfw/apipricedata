@@ -28,8 +28,8 @@ import numpy as np
 import sqlite3
 
 # for users control and logs control
-import usersController
-import logController
+from controllers import usersController
+from controllers import logController
 
 # for obtain forex and stock market data
 from pandas_datareader import data as pdr
@@ -190,7 +190,7 @@ class DataPersist:
 #--- FIN clase para acceso a datos SqLite ----
 
 
-str_header = ". <br>(<b>Needs a <u>user login token</u> in the <u>x-token header param</u></b>)"
+str_header = ". <br>(<b>Needs a <u><i>user login token</i></u> in the <u><i>x-token header param</i></u></b>)"
 
 tags_metadata = [
     {
@@ -301,7 +301,7 @@ async def verify_token(request: Request, call_next):
 
         pos5 = actual_url.find("/admin")
 #-- quitar lo siguiente para testear prefix /admin
-        pos5 = 0
+#        pos5 = 0
 
 #        vUserId = request.user
         vUserId = -1  # resultado["data"]["user_id"]
@@ -524,9 +524,9 @@ async def signup_user(username: str = Form(), password: str = Form()):
 
 
 @app.post("/users/login/", tags=["Login_user"])
-async def login_user(username: str = Form(), password: str = Form(), ClientKey: str = Form(), ClientSecret: str = Form()):
+async def login_user(username: str = Form(), password: str = Form(), ClientKey: str = Form()):
     pUserAccess = usersController.UserControl
-    resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey, ClientSecret)
+    resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey)
 
 #    datos ={"msg":"UserFound", "resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
 #    datos ={"msg":"Usuario, clave o keys incorrectos."}
@@ -542,7 +542,7 @@ async def login_user(username: str = Form(), password: str = Form(), ClientKey: 
         vRol = "No"
         vToken = "Login error"
 
-    pApiLoginRegistry = ApiActionsRegisty
+    pApiLoginRegistry = logController.LogControl
     respuesta_login = pApiLoginRegistry.save_login_request("yFinance.db", vUserId, vUsername, vRol, vToken,"LOGIN")
 
     return {"username": resultado}

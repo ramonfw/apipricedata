@@ -15,8 +15,8 @@ from fastapi import Request
 
 
 # for users control
-import usersController
-import logController
+from controllers import usersController
+from controllers import logController
 
 #--- para  parametros ENUM ---
 from enum import Enum
@@ -35,7 +35,7 @@ class RolEnum(str, Enum):
 
 
 
-str_header_admin = ". <br>(<b>Needs a <u>user login token</u> in the <u>x-token header param</u></b>)"
+str_header_admin = ". <br>(<b>Needs a <u><i>user login token</i></u> in the <u><i>x-token header param</i></u></b>)"
 
 tags_metadata_admin = [
     {
