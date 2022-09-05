@@ -38,22 +38,25 @@ class UserControl:
                 resultqry="Token no encontrado"
                 resu = "False"
                 pToken = "Token no encontrado"
+                message = "Token no encontrado"
             else:
                 resultqry="Ok"
                 resu = "True"
                 username = fila[1]
                 user_id = str(fila[0])
                 vRol = fila[7]
+                message = "Token encontrado"
 
         except:
-            resultqry="Error en "+select_sql
+            resultqry = "Error en "+select_sql
             pToken = "[]"
             resu = "False"
+            message = "Error en "+select_sql
 
         vConn1.close()
 
         datos ={"username":username,"user_id":user_id,"rol":vRol,"resultqry":resultqry, "Token":pToken}
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
     def user_table_created(pDataBase):
@@ -90,19 +93,39 @@ class UserControl:
 
 
 
-    def get_user_list(pDataBase, pUserId):
+    def get_user_list(pDataBase, pUserId, pLoggedUseRol):
         vConn1 = sqlite3.connect(pDataBase)    
         cursor = vConn1.cursor()
         respuesta ={}
         resu = "False"
 
-        try:  
+        if pUserId<1:
+            vWhereStr = " WHERE 1=? "
+            lstParam = [1]
+        else:
+            vWhereStr = " WHERE id= ? " 
+            lstParam = [pUserId]
+
+        if pLoggedUseRol not in ("SADM","ADM"):
+            respuesta ={"result":"False","message":"User not have privilegues to show user list","data":[]}
+            return respuesta
+
+        if pLoggedUseRol=="SADM":
             if pUserId<1:
-                vSelect_sql = "SELECT * FROM users "
-                dbCursor = cursor.execute(vSelect_sql)
+                lstParam = []
+                vWhereStr = ""
             else:
-                vSelect_sql = "SELECT * FROM users where id = ? and ?=?"
-                dbCursor = cursor.execute(vSelect_sql,(pUserId,1,1))
+                vWhereStr = " AND 1=?"
+            vWhereStr2 = ""
+        if pLoggedUseRol=="ADM":
+            vWhereStr2 = " AND rol <> ?"
+            lstParam.append("SADM")
+
+        vSelect_sql = "SELECT * FROM users "+vWhereStr+vWhereStr2
+        lstParamTuple= tuple(lstParam)
+        
+        try:  
+            dbCursor = cursor.execute(vSelect_sql,lstParamTuple)
 
             filas = dbCursor.fetchall()
 
@@ -124,12 +147,12 @@ class UserControl:
                 msg = "Listado obtenido satisfactoriamente"  
             else:  
                 msg = "Listado obtenido vacio, no existe el id " + str(pUserId)
-            respuesta ={"result":resu,"msg":msg,"fieldnames":nombreFilas,"data":datos}
+#            respuesta ={"result":resu,"message":msg,"fieldnames":nombreFilas,"data":datos}
         except Exception as e:   # work on python 3.x
-            respuesta ={"result":"false","msg":"User list not found due to ERROR -"+ str(e),"data":[]}
+            msg = "User list not found due to ERROR -"+ str(e)
 
         vConn1.close()
-        return respuesta
+        return {"result":resu,"message":msg,"data":datos,"fieldnames":nombreFilas}
 
 
 
@@ -145,15 +168,18 @@ class UserControl:
 
             fila = dbCursor.fetchone()
             if fila == None:
-                datos = {"username":"-","msg":"Username not found for user_id: "+str(user_id)}
+                message = "Username NOT found for user_id: "+str(user_id)
+                datos = {"username":"-","user_id":-1}
             else:
+                message = "Username found for user_id: "+str(user_id)
                 datos ={"username":fila[1],"user_id":fila[0]}
                 resu = "True"
         except Exception as e:   # work on python 3.x
-            datos ={"username":"-","msg":"Username not found due to ERROR -"+ str(e)}
+            message = "Username not found due to ERROR -"+ str(e)
+            datos ={"username":"-","user_id":-1}
 
         vConn1.close()
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
     def user_signup(pDataBase, pUserName, pUserPwd):
@@ -184,19 +210,22 @@ class UserControl:
             select_sql = "SELECT id, username, ClientKey, ClientSecret, rol FROM users WHERE username='"+pUserName+"'"
             dbCursor = cursor.execute(select_sql)
             vFila = dbCursor.fetchone()
-            datos = {"msg":"UserFound", "userid":vFila[0], "username":vFila[1], "ClientKey":vFila[2], "ClientSecret":vFila[3], "Token":"No", "userrol":vFila[4]}
-
+            datos = {"userid":vFila[0], "username":vFila[1], "ClientKey":vFila[2], "ClientSecret":vFila[3], "Token":"No", "userrol":vFila[4]}
+            message = "Nuevo usuario registrado"
         else:
             resu = "False"
-            datos ={"msg":"Nombre de usuario ya registrado"}
+            message = "Nombre de usuario ya registrado"
+            datos ={}
+
         vConnS.commit()
 #        vConnS.close()
 
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
     def create_user_data_struct(pDataBase):
-        datos = {"msg":"DatabaseError NoExec"}
+        datos = {}
+        message = "DatabaseError NoExec"
 
         try:
             vConn = sqlite3.connect(pDataBase)
@@ -225,16 +254,16 @@ class UserControl:
                 cursor.execute(index_sql)
 
                 vConn.commit()
-                datos = {"msg":"Tablas creadas"}
+                message = "Tablas creadas"
                 resu = "True"
             else:
-                datos = {"msg":"Tablas ya existen"}
+                message = "Tablas ya existen"
 
             vConn.close()
         except:
-            datos = {"msg":"DatabaseError Except"}
+            message = "DatabaseError Except"
 
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
 
@@ -260,23 +289,27 @@ class UserControl:
                     resultqry = cursor2.execute(update_sql, (vToken, fila[0]))
 #                    rows_affected = cursor2.rowcount
                     resu = "True"
+                    message = "Usuario logueado correctamente"
                 except:
                     resultqry="Error en "+update_sql
-                    vToken = "Error guardando token generado"
+                    vToken = "-"
+                    message = "Login fallido, error guardando token generado"
                     resu = "False"
                     
-                datos ={"msg":"UserFound", "resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
+                datos ={"resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
             else:
                 resu = "False"
-                datos ={"msg":"Usuario, clave o keys incorrectos."}
+                message = "Usuario, clave o keys incorrectos"
+                datos ={}
         else:
             resu = "False"
-            datos ={"msg":"Usuario no registrado."}
+            message = "Usuario no registrado"
+            datos ={}
 
         vConnL.commit()
 #        vConnL.close()
 
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
     def user_change_rol(pDataBase, pUserIdClient, pNuevoRol):
@@ -291,6 +324,7 @@ class UserControl:
         datos = {}
         fila = dbCursor.fetchone()
         resu = "False"
+        message = ""
 
         if fila != None:
             vViejoRol = fila[2]
@@ -301,19 +335,24 @@ class UserControl:
                     resultqry = cursor2.execute(update_sql, (pNuevoRol, pUserIdClient))
                     if cursor2.rowcount>0:
                         resu = "True"
+                        message = "Rol cambiado satisfactoriamente"
                 except:
                     resultqry="Error en "+update_sql
+                    message = resultqry
             else:
                 resultqry="El nuevo rol es igual al anterior"
+                message = resultqry
 
-            datos ={"result":resu, "msg":"UserFound", "userid":fila[0], "username":fila[1], "viejorol":vViejoRol, "nuevorol":pNuevoRol, "resultqry":resultqry}
+
+            datos ={"userid":fila[0], "username":fila[1], "viejorol":vViejoRol, "nuevorol":pNuevoRol, "resultqry":resultqry}
         else:
-            datos ={"result":resu, "msg":"Usuario no registrado."}
+            datos ={}
+            message = "Usuario no registrado."
 
         vConnL.commit()
 #        vConnL.close()
 
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
 

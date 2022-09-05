@@ -248,16 +248,15 @@ app.include_router(admin.router)
 @app.middleware("http")
 async def verify_token(request: Request, call_next):
     my_header_token = request.headers.get('X-Token')
-#    print("my_header ",my_header)
 
     params = request.query_params
 
     pUserAccess = usersController.UserControl
     resultado = pUserAccess.create_user_data_struct("yFinance.db")
 
-    if (resultado["result"]=="False" and resultado["data"]["msg"] in ("DatabaseError Except","DatabaseError NoExec" )):
+    if (resultado["result"]=="False" and resultado["message"] in ("DatabaseError Except","DatabaseError NoExec" )):
         return JSONResponse(content={
-            "message": resultado["data"]["msg"] + ": Error de creación o acceso a SQLite database"
+            "result":"False","message": resultado["message"] + ": Error de creación o acceso a SQLite database"
         }, status_code=401)
 
     actual_url = str(request.url)
@@ -267,26 +266,27 @@ async def verify_token(request: Request, call_next):
 
         vUserId = resultado["data"]["user_id"]
         vUserRol = resultado["data"]["rol"]
-
-        pos5 = actual_url.find("/admin")
-        if pos5>0 and vUserRol != "ADM" and vUserRol == "SADM":
-            return JSONResponse(content={
-                "message": "Usuario "+vUserId + " no tiene suficientes privilegios"
-            }, status_code=401)
+        print("resultado ",resultado)
 
         pApiRequestRegistry = logController.LogControl
         respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", str(params), my_header_token)
 
+        pos5 = actual_url.find("/admin")
+        if pos5>0 and vUserRol != "ADM" and vUserRol != "SADM":
+            return JSONResponse(content={
+                "result":"False","message": "Usuario "+vUserId + " no tiene suficientes privilegios"
+            }, status_code=401)
+
         if resultado["result"] == "False":
             return JSONResponse(content={
-                "message": "Token incorrect (or not set)." + respuesta["data"]["msg"]
+                "result":"False","message": "Token incorrect (or not set)."
             }, status_code=401)
         else:
             new_header = MutableHeaders(request._headers)
             new_header["x-username"] = resultado["data"]["username"]
             new_header["x-userid"] = vUserId
             new_header["x-userrol"] = vUserRol
-            new_header["x-cust-txt-response"] = respuesta["data"]["msg"]
+            new_header["x-cust-txt-response"] = respuesta["message"]
             request._headers = new_header
 
             request.scope.update(headers=request.headers.raw)
@@ -301,10 +301,9 @@ async def verify_token(request: Request, call_next):
 
         pos5 = actual_url.find("/admin")
 #-- quitar lo siguiente para testear prefix /admin
-#        pos5 = 0
+        pos5 = 0
 
-#        vUserId = request.user
-        vUserId = -1  # resultado["data"]["user_id"]
+        vUserId = -1  
         pApiRequestRegistry = logController.LogControl
         respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", str(params), "None")
 
@@ -317,7 +316,7 @@ async def verify_token(request: Request, call_next):
             return response
 
         return JSONResponse(content={
-            "message": "Token not set (or incorrect)."
+            "result":"False","message": "Token not set (or incorrect)."
         }, status_code=401)
 
 
@@ -327,14 +326,13 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
     my_header_token = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
-#    print("request.header2: ", request.headers)
 
     if x_token != None:
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data1","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
+        return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data1","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
     elif my_header_token != None:
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data2","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
+        return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data2","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
     else:
-        return {"message": "Wellcome to API for accessing Yahoo Finance Data3","my_header_token": "No my_header_token, No X-Token, No username, No userid"}
+        return {"result":"False","message": "Wellcome to API for accessing Yahoo Finance Data3","my_header_token": "No my_header_token, No X-Token, No username, No userid"}
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
@@ -357,7 +355,7 @@ async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: st
 
     yf.pdr_override()
 
-    results = {"items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt, "save": dsave}]}
+    results = {"result":"False","message":"Data NOT retrieved","items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt, "save": dsave}]}
     if symbol:
         #download dataframe
         data = pdr.get_data_yahoo(symbol, start=fstart, end=fend, interval=tinterval)
@@ -384,7 +382,7 @@ async def read_market_data_yhfin(symbol: str="TSLA", fstart: str="-30", fend: st
         if fmt!="json":
             data_return = data.to_dict()
 
-        results.update({"symbol": symbol,"total":total_lineas, "data":data_return})
+        results = {"result":"True","message":"Data retrieved","items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt, "save": dsave}],"symbol": symbol,"total":total_lineas, "data":data_return}
     return results
 
 
@@ -408,7 +406,7 @@ async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="
 
     yf.pdr_override()
 
-    results = {"items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt}]}
+    results = {"result":"False","message":"Data NOT retrieved","items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt}]}
     if symbol:
 
         interv=tinterval.value
@@ -428,7 +426,7 @@ async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="
             if fmt!="json":
                 data_return = data.to_dict()
 
-        results.update({"symbol": symbol,"total":len_data, "data":data_return})
+        results = {"result":"True","message":"Data retrieved","items": [{"d": symbol, "start": fstart, "end": fend, "interval": tinterval, "format": fmt}],"symbol": symbol,"total":len_data, "data":data_return}
     return results
 
 
@@ -436,7 +434,7 @@ async def read_market_data_db(symbol: str="TSLA", fstart: str="-30", fend: str="
 @app.get("/market-data/products-list-db/", tags=["Market_data_product_list_SQLite_DB"] )
 async def market_data_productList_db(db: str="yFinance.db", fmt: FmtEnum=FmtEnum.json ):
 
-    results = {"items": [{"db": db, "format": fmt}]}
+    results = {"result":"False","message":"Data NOT retrieved","items": [{"db": db, "format": fmt}]}
     if db:
         pDbAccess = DataPersist
 
@@ -452,7 +450,7 @@ async def market_data_productList_db(db: str="yFinance.db", fmt: FmtEnum=FmtEnum
             len_data = 0
             data_return = {"tabla": " No encontrada"}
 
-        results.update({"db": db,"total":len_data, "products":data_return})
+        results={"result":"True","message":"Data retrieved","items": [{"db": db, "format": fmt}],"total":len_data, "products":data_return}
     return results
 
 
@@ -460,7 +458,7 @@ async def market_data_productList_db(db: str="yFinance.db", fmt: FmtEnum=FmtEnum
 @app.get("/market-data/product-info-db/", tags=["Market_data_product_info_SQLite_DB"])
 async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtEnum=FmtEnum.json ):
 
-    results = {"items": [{"d": symbol, "format": fmt}]}
+    results = {"result":"False","message":"Data NOT retrieved","items": [{"d": symbol, "format": fmt}]}
     if symbol:
 
         pDbAccess = DataPersist
@@ -476,17 +474,25 @@ async def market_data_product_info_db(symbol: str="TSLA", fmt: FmtEnum=FmtEnum.j
             len_data = 0
             data_return = {"tabla": " No encontrada"}
 
-        results.update({"symbol": symbol,"rango_fechas":data_return})
+        results = {"result":"True","message":"Data retrieved","items": [{"d": symbol, "format": fmt}],"symbol": symbol,"rango_fechas":data_return}
     return results
 
 
 @app.get("/users/me", tags=["Read_user_current"])
 async def read_user_me(request: Request): 
-#    my_header = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
 
-    return {"username": my_username,"userid": my_userid}
+    datos={"username": my_username,"userid": my_userid}
+
+    resu="True"
+    message="Current user found"
+    
+    if my_userid==None:
+        resu="False"
+        message="Current user NOT found"
+
+    return {"result": resu, "message": message, "data":datos}
 
 
 @app.get("/users/{user_id}", tags=["Read_user_by_id"])
@@ -495,7 +501,7 @@ async def read_user(user_id: str):
     pUserAccess = usersController.UserControl
     resultado = pUserAccess.get_user_by_id("yFinance.db", user_id)
 
-    return {"resultado": resultado}
+    return resultado
 
 
 @app.post("/users/signup/", tags=["Signup_user"])
@@ -504,9 +510,7 @@ async def signup_user(username: str = Form(), password: str = Form()):
 
     resultado = pUserAccess.user_signup("yFinance.db", username, password)
 
-#    print(resultado)
-
-    if resultado["data"]["msg"] == "UserFound":
+    if resultado["result"] == "True":
         vUserId = resultado["data"]["userid"]
         vUsername = resultado["data"]["username"]
         vRol = resultado["data"]["userrol"]
@@ -528,10 +532,7 @@ async def login_user(username: str = Form(), password: str = Form(), ClientKey: 
     pUserAccess = usersController.UserControl
     resultado = pUserAccess.user_login("yFinance.db", username, password, ClientKey)
 
-#    datos ={"msg":"UserFound", "resultqry":resultqry, "userid":fila[0], "username":fila[1], "Token":vToken, "userrol":fila[7]}
-#    datos ={"msg":"Usuario, clave o keys incorrectos."}
-
-    if resultado["data"]["msg"] == "UserFound":
+    if resultado["result"] == "True":
         vUserId = resultado["data"]["userid"]
         vUsername = resultado["data"]["username"]
         vRol = resultado["data"]["userrol"]
@@ -545,7 +546,7 @@ async def login_user(username: str = Form(), password: str = Form(), ClientKey: 
     pApiLoginRegistry = logController.LogControl
     respuesta_login = pApiLoginRegistry.save_login_request("yFinance.db", vUserId, vUsername, vRol, vToken,"LOGIN")
 
-    return {"username": resultado}
+    return resultado
 
 
 #--- Get Header ---

@@ -82,18 +82,20 @@ router = APIRouter(
 #-- USERS LIST ---
 
 @router.get("/users/list/all/", tags=["Read_all_user_list"])
-async def read_all_user_list():
+async def read_all_user_list(request: Request):
+    vUserRol = request.headers.get('x-userrol')
     pUserAccess = usersController.UserControl
 
-    vDatos = pUserAccess.get_user_list("yFinance.db",0)
-    return {"data":vDatos}
+    vDatos = pUserAccess.get_user_list("yFinance.db", 0, vUserRol)
+    return vDatos
 
 
 @router.get("/users/list/{user_id}", tags=["Read_user_data"])
-async def read_user_id(user_id: int):
+async def read_user_id(request: Request, user_id: int):
+    vUserRol = request.headers.get('x-userrol')
     pUserAccess = usersController.UserControl
 
-    vDatos = pUserAccess.get_user_list("yFinance.db",user_id)
+    vDatos = pUserAccess.get_user_list("yFinance.db",user_id, vUserRol)
     return {"data":vDatos}
 
 

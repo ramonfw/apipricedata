@@ -51,12 +51,12 @@ class LogControl:
                 datos.append(vDatos)
                 resu = "True"
             if resu=="True":  
-                msg = "Listado obtenido satisfactoriamente"  
+                message = "Listado obtenido satisfactoriamente"  
             else:  
-                msg = "Listado obtenido vacio, el id " + str(pUserId) + " no tiene logins registrados con accion " + pScope
-            respuesta ={"result":resu,"msg":msg,"fieldnames":nombreFilas,"data":datos}
+                message = "Listado obtenido vacio, el id " + str(pUserId) + " no tiene logins registrados con accion " + pScope
+            respuesta ={"result":resu,"message":message,"fieldnames":nombreFilas,"data":datos}
         except Exception as e:   # work on python 3.x
-            respuesta ={"result":"false","msg":"Users logins not found due to ERROR -"+ str(e),"data":[]}
+            respuesta ={"result":"False","message":"Users logins not found due to ERROR -"+ str(e),"data":[]}
 
         vConn1.close()
         return respuesta
@@ -100,9 +100,9 @@ class LogControl:
                 msg = "Listado obtenido satisfactoriamente"  
             else:  
                 msg = "Listado obtenido vacio, no existen accesos en el rango de fechas con accion " + pScope
-            respuesta ={"result":resu,"msg":msg,"FIni":pFIni,"FEnd":pFEnd,"fieldnames":nombreFilas,"data":datos}
+            respuesta ={"result":resu,"message":msg,"FIni":pFIni,"FEnd":pFEnd,"fieldnames":nombreFilas,"data":datos}
         except Exception as e:   # work on python 3.x
-            respuesta ={"result":"false","msg":"Users logins not found due to ERROR -"+ str(e),"data":[]}
+            respuesta ={"result":"false","message":"Users logins not found due to ERROR -"+ str(e),"data":[]}
 
         vConn1.close()
         return respuesta
@@ -123,6 +123,7 @@ class LogControl:
             nombreFilas= [dataNombres[0] for dataNombres in cursor.description]
 
             datos = []
+            total_requests = 0
 
             for tfila in filas:
                 fila = list(tfila)
@@ -131,14 +132,15 @@ class LogControl:
                 for i in range(len(fila)):
                     vDatos[nombreFilas[i]] = fila[i]
                 datos.append(vDatos)
+                total_requests=total_requests+1
                 resu = "True"
             if resu=="True":  
                 msg = "Listado obtenido satisfactoriamente"  
             else:  
                 msg = "Listado obtenido vacio, el id " + str(pUserId) + " no tiene requests registrados"
-            respuesta ={"result":resu,"msg":msg,"fieldnames":nombreFilas,"data":datos}
+            respuesta ={"result":resu,"message":msg,"total_requests":total_requests,"fieldnames":nombreFilas,"data":datos}
         except Exception as e:   # work on python 3.x
-            respuesta ={"result":"false","msg":"Users requests not found due to ERROR -"+ str(e),"data":[]}
+            respuesta ={"result":"false","message":"Users requests not found due to ERROR -"+ str(e),"data":[]}
 
         vConn1.close()
         return respuesta
@@ -164,6 +166,7 @@ class LogControl:
             nombreFilas= [dataNombres[0] for dataNombres in cursor.description]
 
             datos = []
+            total_requests = 0
 
             for tfila in filas:
                 fila = list(tfila)
@@ -172,14 +175,15 @@ class LogControl:
                 for i in range(len(fila)):
                     vDatos[nombreFilas[i]] = fila[i]
                 datos.append(vDatos)
+                total_requests = total_requests+1
                 resu = "True"
             if resu=="True":  
                 msg = "Listado obtenido satisfactoriamente"  
             else:  
                 msg = "Listado obtenido vacio, no existen requests en el rango de fechas indicado"
-            respuesta ={"result":resu,"msg":msg,"FIni":pFIni,"FEnd":pFEnd,"fieldnames":nombreFilas,"data":datos}
+            respuesta ={"result":resu,"message":msg,"FIni":pFIni,"FEnd":pFEnd,"total_requests":total_requests,"fieldnames":nombreFilas,"data":datos}
         except Exception as e:   # work on python 3.x
-            respuesta ={"result":"false","msg":"Users requests not found due to ERROR -"+ str(e),"data":[]}
+            respuesta ={"result":"false","message":"Users requests not found due to ERROR -"+ str(e),"data":[]}
 
         vConn1.close()
         return respuesta
@@ -187,6 +191,7 @@ class LogControl:
 
     def save_api_request(pDataBase, pUserId, pRequest, pIp, pDataRequest, pToken):
         resu = "False"
+        message = ""
         vRequest = str(pRequest)
         try:
             vConn1 = sqlite3.connect(pDataBase)
@@ -199,16 +204,18 @@ class LogControl:
             insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
             cursor2.execute(insert_sql,(pUserId,vRequest,pIp,pDataRequest,pToken,vFechaHora))
             resu = "True"
-            datos = {"msg":"API Request guardara Ok"}
+            message = "API Request guardara Ok"
+            datos = {}
 
 #            print (insert_sql)
             vConn1.commit()
             vConn1.close()
         except Exception as e:   # work on python 3.x
             vConn1.close()
-            datos ={"msg":"API request not saved due to ERROR -"+ str(e)}
+            message = "API request not saved due to ERROR -"+ str(e)
+            datos = {}
 
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
     def save_login_request(pDataBase, pUserId, pUsername, pRol, pToken, pAccion):
@@ -225,15 +232,17 @@ class LogControl:
             insert_sql = f"INSERT INTO users_logins (userid, username, rol, accion, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
             cursor2.execute(insert_sql,(pUserId,pUsername,pRol,pAccion,pToken,vFechaHora))
             resu = "True"
-            datos = {"msg":"User Login guardado Ok"}
+            message = "User Login guardado Ok"
+            datos = {}
 
 #            print (insert_sql)
             vConn1.commit()
         except Exception as e:   # work on python 3.x
-            datos ={"msg":"User Login not saved due to ERROR -"+ str(e)}
+            message = "User Login not saved due to ERROR -"+ str(e)
+            datos = {}
 #        finally:
 #            vConn1.close()
 
-        return {"result": resu, "data": datos}
+        return {"result": resu, "message": message, "data": datos}
 
 
