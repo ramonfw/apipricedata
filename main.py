@@ -1,6 +1,5 @@
 # Configurar entorno segu la página   https://fastapi.tiangolo.com/es/tutorial/
 # Editor utilizado: Visual Studio Code
-
 # Visualizador de Base de datos:  DB Browser for SQLite
 
 from fastapi import APIRouter
@@ -143,7 +142,6 @@ class DataPersist:
             for i in range(len(list_products.name)):
                 if list_products.name[i] == pTableName:
                     product_found = True
-#                    print("Producto ",i,list_products.name[i])
             
             create_sql = "CREATE TABLE IF NOT EXISTS "+pTableName+" (FechaHora DATETIME, Open FLOAT, Close FLOAT, High FLOAT, Low FLOAT, Adj_Close FLOAT, Volume LONG, TFrame TEXT)"
             cursor.execute(create_sql)

@@ -72,9 +72,7 @@ tags_metadata_admin = [
 
 router = APIRouter(
     prefix="/admin",
-#    tags=["admin"],
     responses={404: {"description": "Not found"}},
-#    openapi_tags=tags_metadata_admin,
 )
 
 
@@ -176,8 +174,6 @@ async def read_date_requests(fstart: str="-30", fend: str="today"):
 async def update_user_rol(request: Request, user_id: str, user_rol:RolEnum=RolEnum.inv):
     userid_admin = request.headers.get('x-userid')
     userrol_admin = request.headers.get('x-userrol')
-
-#    print("userrol_admin: "+userrol_admin)
 
     if userrol_admin not in (RolEnum.sadm,RolEnum.adm):
         vDatos ={"result":"False", "msg":"Usuario no tiene privilegios para cambio de roles"}

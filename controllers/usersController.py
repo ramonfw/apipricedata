@@ -147,7 +147,7 @@ class UserControl:
                 msg = "Listado obtenido satisfactoriamente"  
             else:  
                 msg = "Listado obtenido vacio, no existe el id " + str(pUserId)
-#            respuesta ={"result":resu,"message":msg,"fieldnames":nombreFilas,"data":datos}
+
         except Exception as e:   # work on python 3.x
             msg = "User list not found due to ERROR -"+ str(e)
 
@@ -187,7 +187,7 @@ class UserControl:
         cursor = vConnS.cursor()
 
         table_found = UserControl.user_table_created(pDataBase)
-        if table_found == False:  # crear metodo para crear tablas
+        if table_found == False:    # llamar metodo para crear tablas
             UserControl.create_user_data_struct(pDataBase)
 
         select_sql = "SELECT username FROM users WHERE username='"+pUserName+"'"
@@ -218,7 +218,6 @@ class UserControl:
             datos ={}
 
         vConnS.commit()
-#        vConnS.close()
 
         return {"result": resu, "message": message, "data": datos}
 
@@ -235,7 +234,7 @@ class UserControl:
 
             user_found = UserControl.user_table_created(pDataBase)
 
-            if user_found == False:  # crear metodo para crear tablas
+            if user_found == False:  # metodos para crear tablas
                 create_sql = "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR (30), password VARCHAR (30), ClientKey VARCHAR (255), ClientSecret VARCHAR (255), Token VARCHAR (255), FechaHora DATETIME default null, rol VARCHAR(5) NOT NULL DEFAULT 'USR')"
                 cursor.execute(create_sql)
                 index_sql = "CREATE INDEX idxUsers ON users (id)"
@@ -272,7 +271,7 @@ class UserControl:
         cursor = vConnL.cursor()
 
         table_found = UserControl.user_table_created(pDataBase)
-        if table_found == False:  # crear metodo para crear tablas
+        if table_found == False:  # llamar metodo para crear tablas
             UserControl.create_user_data_struct(pDataBase)
 
         select_sql = "SELECT *, ? FROM users WHERE username= ?"
@@ -307,7 +306,6 @@ class UserControl:
             datos ={}
 
         vConnL.commit()
-#        vConnL.close()
 
         return {"result": resu, "message": message, "data": datos}
 
@@ -350,14 +348,6 @@ class UserControl:
             message = "Usuario no registrado."
 
         vConnL.commit()
-#        vConnL.close()
 
         return {"result": resu, "message": message, "data": datos}
-
-
-
-
-                    
-
-
 

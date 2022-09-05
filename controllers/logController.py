@@ -199,15 +199,13 @@ class LogControl:
 
             now = datetime.now()
             vFechaHora = now.strftime("%Y-%m-%d %H:%M:%S")
-#            vFechaHora = now.strftime("%Y-%m-%d")
-#            insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES ({pUserId}, '{pRequest}', '{pIp}', '{pDataRequest}', '{pToken}', '{vFechaHora}')"
+
             insert_sql = f"INSERT INTO api_requests (userid, request, ip, data, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
             cursor2.execute(insert_sql,(pUserId,vRequest,pIp,pDataRequest,pToken,vFechaHora))
             resu = "True"
             message = "API Request guardara Ok"
             datos = {}
 
-#            print (insert_sql)
             vConn1.commit()
             vConn1.close()
         except Exception as e:   # work on python 3.x
@@ -227,21 +225,17 @@ class LogControl:
 
             now = datetime.now()
             vFechaHora = now.strftime("%Y-%m-%d %H:%M:%S")
-#            vFechaHora = now.strftime("%Y-%m-%d")
-#            insert_sql = f"INSERT INTO api_requests (userid, username, rol, accion, Token, FechaHora) VALUES ({pUserId}, '{pUsername}', '{pRol}', '{pAccion}', '{pToken}', '{vFechaHora}')"
+
             insert_sql = f"INSERT INTO users_logins (userid, username, rol, accion, Token, FechaHora) VALUES (?, ?, ?, ?, ?, ?)"
             cursor2.execute(insert_sql,(pUserId,pUsername,pRol,pAccion,pToken,vFechaHora))
             resu = "True"
             message = "User Login guardado Ok"
             datos = {}
 
-#            print (insert_sql)
             vConn1.commit()
         except Exception as e:   # work on python 3.x
             message = "User Login not saved due to ERROR -"+ str(e)
             datos = {}
-#        finally:
-#            vConn1.close()
 
         return {"result": resu, "message": message, "data": datos}
 
