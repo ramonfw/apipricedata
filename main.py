@@ -316,8 +316,8 @@ async def verify_token(request: Request, call_next):
     else:
         pos = actual_url.find("/docs")
         pos2 = actual_url.find("/openapi.json")
-        pos3 = actual_url.find("/users/signup")
-        pos4 = actual_url.find("/users/login")
+        pos3 = actual_url.find("/users/signup/")
+        pos4 = actual_url.find("/users/login/")
 
         pos5 = actual_url.find("/admin")
 #-- quitar lo siguiente para testear prefix /admin
