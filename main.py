@@ -247,6 +247,27 @@ app.include_router(admin.router)
 async def verify_token(request: Request, call_next):
     my_header_token = request.headers.get('X-Token')
 
+#    my_client_ip = request.environ.get('HTTP_X_FORWARDED_FOR') or request.environ.get('REMOTE_ADDR')
+    my_client_ip = request.client.host
+#    print ("Client IP: ",my_client_ip)
+
+    xf = 'x-forwarded-for'.encode('utf-8')
+    xh = 'host'.encode('utf-8')
+
+    forward_ip = "0:0:0:0"
+    origin_ip = "0:0:0:0"
+
+    for header in request.headers.raw:
+        if header[0] == xf:
+            print("Find out the forwarded-for ip address")
+            forward_ip = header[1].decode('utf-8')
+        if header[0] == xh:
+            print("Find out the host ip address")
+            origin_ip = header[1].decode('utf-8')
+
+#        print(f"forward_ip:\t{forward_ip}")
+#        print(f"origin_ip:\t{origin_ip}")
+
     params = request.query_params
 
     pUserAccess = usersController.UserControl
@@ -264,10 +285,10 @@ async def verify_token(request: Request, call_next):
 
         vUserId = resultado["data"]["user_id"]
         vUserRol = resultado["data"]["rol"]
-        print("resultado ",resultado)
+#        print("resultado ",resultado)
 
         pApiRequestRegistry = logController.LogControl
-        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, "0:0:0:0", str(params), my_header_token)
+        respuesta = pApiRequestRegistry.save_api_request("yFinance.db", vUserId, request.url, my_client_ip, str(params), my_header_token)
 
         pos5 = actual_url.find("/admin")
         if pos5>0 and vUserRol != "ADM" and vUserRol != "SADM":
@@ -285,6 +306,7 @@ async def verify_token(request: Request, call_next):
             new_header["x-userid"] = vUserId
             new_header["x-userrol"] = vUserRol
             new_header["x-cust-txt-response"] = respuesta["message"]
+            new_header["x-client-ip"] = my_client_ip
             request._headers = new_header
 
             request.scope.update(headers=request.headers.raw)
@@ -318,19 +340,26 @@ async def verify_token(request: Request, call_next):
         }, status_code=401)
 
 
-
 @app.get('/', tags=["Root"] )
 async def root(request: Request, x_token: Union[List[str], None] = Header(default=None)):
     my_header_token = request.headers.get('x-token')
     my_username = request.headers.get('x-username')
     my_userid = request.headers.get('x-userid')
+    my_client_ip = request.headers.get('x-client-ip')
+
+    if my_client_ip == None:
+        my_client_ip = "0:0:0:0"
+
+    str_header = ""
+    for header in request.headers.raw:
+        str_header += header[0].decode('utf-8')+":"+header[1].decode('utf-8')+"<br>"
 
     if x_token != None:
-        return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data1","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
+        return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data1. Client IP: "+my_client_ip,"str_header": str_header,"my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
     elif my_header_token != None:
-        return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data2","my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
+        return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data2. Client IP: "+my_client_ip,"str_header": str_header,"my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}
     else:
-        return {"result":"False","message": "Wellcome to API for accessing Yahoo Finance Data3","my_header_token": "No my_header_token, No X-Token, No username, No userid"}
+        return {"result":"False","message": "Wellcome to API for accessing Yahoo Finance Data3. Client IP: "+my_client_ip,"str_header": str_header,"my_header_token": "No my_header_token, No X-Token, No username, No userid"}
 
 
 #---  URL:  http://127.0.0.1:8000/market-data/yhfin/?q=TSLA
