@@ -298,7 +298,7 @@ async def verify_token(request: Request, call_next):
 
         if resultado["result"] == "False":
             return JSONResponse(content={
-                "result":"False","message": "Token incorrect (or not set)."
+                "result":"False","message": resultado["message"]   #"Token incorrect (or not set)."
             }, status_code=401)
         else:
             new_header = MutableHeaders(request._headers)
@@ -353,6 +353,8 @@ async def root(request: Request, x_token: Union[List[str], None] = Header(defaul
     str_header = ""
     for header in request.headers.raw:
         str_header += header[0].decode('utf-8')+":"+header[1].decode('utf-8')+"<br>"
+
+    str_header = "Processed Ok"    
 
     if x_token != None:
         return {"result":"True","message": "Wellcome to API for accessing Yahoo Finance Data1. Client IP: "+my_client_ip,"str_header": str_header,"my_header_token": my_header_token,"X-Token": x_token,"username": my_username,"userid": my_userid}

@@ -38,14 +38,28 @@ class UserControl:
                 resultqry="Token no encontrado"
                 resu = "False"
                 pToken = "Token no encontrado"
-                message = "Token no encontrado"
+                message = "Token incorrect (or not set)"
             else:
-                resultqry="Ok"
-                resu = "True"
-                username = fila[1]
-                user_id = str(fila[0])
-                vRol = fila[7]
-                message = "Token encontrado"
+                vFechaHoraTokenStr = fila[6]
+                vFechaTokenStr = vFechaHoraTokenStr[0:10]
+
+                now = datetime.now()
+                vFechaNowStr = now.strftime("%Y-%m-%d")
+
+                if vFechaNowStr <= vFechaTokenStr:
+                    resultqry="Ok"
+                    resu = "True"
+                    username = fila[1]
+                    user_id = str(fila[0])
+                    vRol = fila[7]
+                    message = "Token encontrado"
+                else:
+                    resultqry="Ko"
+                    resu = "False"
+                    username = fila[1]
+                    user_id = str(fila[0])
+                    vRol = "-"
+                    message = "Token caducado"
 
         except:
             resultqry = "Error en "+select_sql
